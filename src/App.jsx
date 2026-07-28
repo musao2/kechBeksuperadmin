@@ -11,6 +11,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLive, setIsLive] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   const [stationStatus, setStationStatus] = useState({
     is_open: true,
     cashback_percent: 5.0
@@ -72,6 +75,14 @@ export default function App() {
     }, 800);
   };
 
+  const handleToggleSidebar = () => {
+    if (window.innerWidth < 768) {
+      setMobileOpen(!mobileOpen);
+    } else {
+      setIsCollapsed(!isCollapsed);
+    }
+  };
+
   const pageTitles = {
     dashboard: 'Bosh Sahifa & Analitika',
     station: 'Stansiya va Xarita Sozlamalari',
@@ -85,7 +96,11 @@ export default function App() {
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
-        isLive={isLive} 
+        isLive={isLive}
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
       />
 
       {/* Main Content Area */}
@@ -96,10 +111,12 @@ export default function App() {
           stationStatus={stationStatus}
           onRefresh={handleGlobalRefresh}
           isRefreshing={isRefreshing}
+          isCollapsed={isCollapsed}
+          onToggleSidebar={handleToggleSidebar}
         />
 
         {/* Page Views Container */}
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-8">
           {activeTab === 'dashboard' && <DashboardOverview />}
           {activeTab === 'station' && (
             <StationSettings 

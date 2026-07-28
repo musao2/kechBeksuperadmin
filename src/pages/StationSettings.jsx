@@ -184,7 +184,7 @@ export default function StationSettings({ onStationUpdated }) {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              Stansiya Sozlamalari (`station_settings`)
+              Stansiya Sozlamalari 
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
               O'zgarishlar mijoz ilovasida va QR skanerdagi keshbekda REAL-TIME o'zgaradi

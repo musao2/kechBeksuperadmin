@@ -8,7 +8,9 @@ import {
   RefreshCw, 
   Download,
   Clock,
-  Tag
+  Tag,
+  DollarSign,
+  Wallet
 } from 'lucide-react';
 
 export default function TransactionsHistory() {
@@ -29,7 +31,7 @@ export default function TransactionsHistory() {
         .from('transactions')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(200);
 
       if (error) throw error;
       setTransactions(data || []);
@@ -61,15 +63,47 @@ export default function TransactionsHistory() {
     return new Intl.NumberFormat('uz-UZ').format(val || 0) + " so'm";
   };
 
+  // Aniq operatsiya turini aniqlash (Berilgan vs Yechilgan)
+  const isTransactionEarn = (t) => {
+    const typeUpper = (t.type || '').toUpperCase();
+    if (typeUpper === 'WITHDRAW' || typeUpper === 'YECHILGAN' || typeUpper === 'SPENT' || typeUpper === 'MINUS' || typeUpper === 'USE' || typeUpper === 'REDEEM') {
+      return false;
+    }
+    if (typeUpper === 'EARN' || typeUpper === 'CASHBACK' || typeUpper === 'GIVEN' || typeUpper === 'ADD' || typeUpper === 'BONUS' || typeUpper === 'PLUS') {
+      return true;
+    }
+    if (t.cashback_amount !== undefined && t.cashback_amount !== null) {
+      return Number(t.cashback_amount) >= 0;
+    }
+    return Number(t.amount || 0) >= 0;
+  };
+
+  // Filtrlangan tranzaksiyalar
   const filteredTransactions = transactions.filter((t) => {
-    const typeMatch = filterType === 'ALL' || (t.type || '').toUpperCase() === filterType;
+    const isEarn = isTransactionEarn(t);
+    const typeMatch = 
+      filterType === 'ALL' ||
+      (filterType === 'EARN' && isEarn) ||
+      (filterType === 'WITHDRAW' && !isEarn);
+
+    const userName = t.user_name || t.full_name || t.name || '';
     const searchMatch = !searchQuery || 
-      (t.user_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (t.phone || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (t.fuel_type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (t.code || '').toLowerCase().includes(searchQuery.toLowerCase());
+
     return typeMatch && searchMatch;
   });
+
+  // Jami summalarni hisoblash
+  const totalSalesSum = filteredTransactions.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+  const totalCashbackSum = filteredTransactions.reduce((acc, t) => {
+    const cb = t.cashback_amount !== undefined && t.cashback_amount !== null 
+      ? Math.abs(Number(t.cashback_amount)) 
+      : Math.abs(Number(t.amount || 0));
+    return acc + cb;
+  }, 0);
 
   const exportCSV = () => {
     if (filteredTransactions.length === 0) return;
@@ -77,8 +111,8 @@ export default function TransactionsHistory() {
     const rows = filteredTransactions.map(t => [
       t.id,
       t.created_at,
-      t.type,
-      `"${t.user_name || ''}"`,
+      isTransactionEarn(t) ? 'BERILGAN' : 'YECHILGAN',
+      `"${t.user_name || t.full_name || t.name || ''}"`,
       `"${t.phone || ''}"`,
       t.amount || 0,
       t.cashback_amount || 0,
@@ -101,7 +135,7 @@ export default function TransactionsHistory() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-[#0f7b4c]" /> Tranzaksiyalar Tarixi (`transactions`)
+            <TrendingUp className="w-5 h-5 text-[#0f7b4c]" /> Tranzaksiyalar Tarixi
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Barcha keshbek berish va yechib olish amallarining real-time ro'yxati
@@ -110,7 +144,7 @@ export default function TransactionsHistory() {
 
         <button
           onClick={exportCSV}
-          className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors self-start sm:self-auto"
+          className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors self-start sm:self-auto shadow-sm"
         >
           <Download className="w-4 h-4" /> Export CSV
         </button>
@@ -131,12 +165,12 @@ export default function TransactionsHistory() {
         </div>
 
         {/* Filter Type Pills */}
-        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
           <button
             onClick={() => setFilterType('ALL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               filterType === 'ALL'
-                ? 'bg-white text-slate-900 shadow-sm'
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -144,24 +178,58 @@ export default function TransactionsHistory() {
           </button>
           <button
             onClick={() => setFilterType('EARN')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
               filterType === 'EARN'
-                ? 'bg-[#0f7b4c] text-white shadow-sm'
-                : 'text-slate-500 hover:text-[#0f7b4c]'
+                ? 'bg-[#0f7b4c] text-white shadow-md shadow-emerald-800/20'
+                : 'text-slate-600 hover:text-[#0f7b4c]'
             }`}
           >
-            <ArrowUpRight className="w-3.5 h-3.5" /> Berilgan (Keshbek)
+            <ArrowUpRight className="w-4 h-4" /> Berilgan (Keshbek)
           </button>
           <button
             onClick={() => setFilterType('WITHDRAW')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
               filterType === 'WITHDRAW'
-                ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-slate-500 hover:text-purple-500'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-800/20'
+                : 'text-slate-600 hover:text-purple-600'
             }`}
           >
-            <ArrowDownLeft className="w-3.5 h-3.5" /> Yechilgan
+            <ArrowDownLeft className="w-4 h-4" /> Yechilgan
           </button>
+        </div>
+      </div>
+
+      {/* Total Sum Summary Banner */}
+      <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#0f7b4c] flex items-center justify-center font-bold border border-emerald-200/80 shrink-0">
+            <Wallet className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider block">
+              Jami Summa ({filterType === 'ALL' ? 'Barchasi' : filterType === 'EARN' ? 'Berilgan Keshbek' : 'Yechilgan Keshbek'})
+            </span>
+            <span className="text-[11px] text-slate-500 font-medium">
+              Jami <strong className="text-slate-900">{filteredTransactions.length} ta</strong> tranzaksiya bo'yicha
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6 sm:gap-8 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+          <div>
+            <span className="text-[11px] text-slate-500 font-medium block">Jami Savdo Summasi:</span>
+            <span className="text-base sm:text-lg font-extrabold text-slate-900">
+              {formatCurrency(totalSalesSum)}
+            </span>
+          </div>
+          <div className="border-l border-slate-200 pl-6 sm:pl-8">
+            <span className="text-[11px] text-slate-500 font-medium block">
+              {filterType === 'WITHDRAW' ? "Jami Yechilgan Keshbek:" : "Jami Keshbek Summasi:"}
+            </span>
+            <span className={`text-base sm:text-lg font-extrabold ${filterType === 'WITHDRAW' ? 'text-purple-700' : 'text-[#0f7b4c]'}`}>
+              {formatCurrency(totalCashbackSum)}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -189,7 +257,8 @@ export default function TransactionsHistory() {
                 </tr>
               ) : filteredTransactions.length > 0 ? (
                 filteredTransactions.map((t) => {
-                  const isEarn = (t.type || '').toUpperCase() === 'EARN' || (t.type || '').toLowerCase() === 'cashback';
+                  const isEarn = isTransactionEarn(t);
+                  const cbVal = Math.abs(t.cashback_amount !== undefined && t.cashback_amount !== null ? t.cashback_amount : t.amount);
                   return (
                     <tr key={t.id} className="hover:bg-slate-50 transition-colors">
                       <td className="p-3.5 text-slate-500 font-mono">
@@ -210,7 +279,7 @@ export default function TransactionsHistory() {
                       </td>
                       <td className="p-3.5">
                         <div className="font-bold text-slate-900">
-                          {t.user_name || 'Mijoz'}
+                          {t.user_name || t.full_name || t.name || 'Mijoz'}
                         </div>
                         <div className="text-[11px] text-slate-400 font-mono">{t.phone || '—'}</div>
                       </td>
@@ -228,7 +297,7 @@ export default function TransactionsHistory() {
                         {formatCurrency(t.amount)}
                       </td>
                       <td className={`p-3.5 text-right font-bold text-sm ${isEarn ? 'text-[#0f7b4c]' : 'text-purple-600'}`}>
-                        {isEarn ? '+' : '-'}{formatCurrency(t.cashback_amount || t.amount)}
+                        {isEarn ? '+' : '-'}{formatCurrency(cbVal)}
                       </td>
                     </tr>
                   );

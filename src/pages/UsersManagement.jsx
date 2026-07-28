@@ -22,6 +22,7 @@ export default function UsersManagement() {
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [editingName, setEditingName] = useState('');
   const [newBalance, setNewBalance] = useState('');
 
   // New User Form State
@@ -60,6 +61,7 @@ export default function UsersManagement() {
         .from('profiles')
         .insert([{
           full_name: newUser.full_name,
+          name: newUser.full_name,
           phone: newUser.phone,
           card_number: newUser.card_number,
           cashback_balance: parseFloat(newUser.cashback_balance || 0),
@@ -77,15 +79,20 @@ export default function UsersManagement() {
     }
   };
 
-  const handleUpdateBalance = async (e) => {
+  const handleUpdateUser = async (e) => {
     e.preventDefault();
     if (!editingUser) return;
 
     try {
       const updatedBalance = parseFloat(newBalance);
+      const cleanName = editingName.trim();
       const { error } = await supabase
         .from('profiles')
-        .update({ cashback_balance: updatedBalance })
+        .update({ 
+          full_name: cleanName,
+          name: cleanName,
+          cashback_balance: updatedBalance 
+        })
         .eq('id', editingUser.id);
 
       if (error) throw error;
@@ -93,13 +100,14 @@ export default function UsersManagement() {
       setEditingUser(null);
       fetchUsers();
     } catch (err) {
-      alert("Balansni yangilashda xatolik: " + err.message);
+      alert("Foydalanuvchi ma'lumotlarini yangilashda xatolik: " + err.message);
     }
   };
 
   // Filter users by search query (phone or name)
   const filteredUsers = users.filter((u) => {
-    const nameMatch = u.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const userName = u.full_name || u.name || '';
+    const nameMatch = userName.toLowerCase().includes(searchQuery.toLowerCase());
     const phoneMatch = u.phone?.toLowerCase().includes(searchQuery.toLowerCase());
     const cardMatch = u.card_number?.toLowerCase().includes(searchQuery.toLowerCase());
     return nameMatch || phoneMatch || cardMatch;
@@ -114,7 +122,7 @@ export default function UsersManagement() {
     const headers = ["ID", "Ism-Sharif", "Telefon", "Karta Raqam", "Keshbek Balans (so'm)"];
     const rows = filteredUsers.map(u => [
       u.id,
-      `"${u.full_name || ''}"`,
+      `"${u.full_name || u.name || ''}"`,
       `"${u.phone || ''}"`,
       `"${u.card_number || ''}"`,
       u.cashback_balance || 0
@@ -136,7 +144,7 @@ export default function UsersManagement() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-[#0f7b4c]" /> Foydalanuvchilar Boshqaruvi (`profiles`)
+            <Users className="w-5 h-5 text-[#0f7b4c]" /> Foydalanuvchilar Boshqaruvi 
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Ro'yxatdan o'tgan mijozlar, ularning karta va keshbek balanslarini boshqarish
@@ -215,55 +223,59 @@ export default function UsersManagement() {
                   </td>
                 </tr>
               ) : filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-emerald-100 text-[#0f7b4c] font-bold flex items-center justify-center text-xs border border-emerald-200">
-                          {user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900">
-                            {user.full_name || 'Noma\'lum Mijoz'}
+                filteredUsers.map((user) => {
+                  const displayName = user.full_name || user.name || 'Noma\'lum Mijoz';
+                  return (
+                    <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-emerald-100 text-[#0f7b4c] font-bold flex items-center justify-center text-xs border border-emerald-200">
+                            {displayName !== 'Noma\'lum Mijoz' ? displayName.charAt(0).toUpperCase() : 'M'}
                           </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            ID: {user.id ? String(user.id).substring(0, 8) : '—'}
+                          <div>
+                            <div className="font-bold text-slate-900">
+                              {displayName}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              ID: {user.id ? String(user.id).substring(0, 8) : '—'}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-3.5 font-medium font-mono">
-                      <span className="inline-flex items-center gap-1 text-slate-700">
-                        <Phone className="w-3.5 h-3.5 text-slate-400" />
-                        {user.phone || '—'}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-mono">
-                      {user.card_number ? (
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 font-bold text-slate-800 flex items-center gap-1.5 w-fit">
-                          <CreditCard className="w-3.5 h-3.5 text-[#0f7b4c]" />
-                          {user.card_number}
+                      </td>
+                      <td className="p-3.5 font-medium font-mono">
+                        <span className="inline-flex items-center gap-1 text-slate-700">
+                          <Phone className="w-3.5 h-3.5 text-slate-400" />
+                          {user.phone || '—'}
                         </span>
-                      ) : (
-                        <span className="text-slate-400 italic">Karta biriktirilmagan</span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right font-bold text-[#0f7b4c] text-sm">
-                      {formatCurrency(user.cashback_balance)}
-                    </td>
-                    <td className="p-3.5 text-center">
-                      <button
-                        onClick={() => {
-                          setEditingUser(user);
-                          setNewBalance(user.cashback_balance || 0);
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-[#0f7b4c] hover:text-white font-semibold text-xs transition-colors flex items-center gap-1 mx-auto"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" /> Balansni Tahrirlash
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="p-3.5 font-mono">
+                        {user.card_number ? (
+                          <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 font-bold text-slate-800 flex items-center gap-1.5 w-fit">
+                            <CreditCard className="w-3.5 h-3.5 text-[#0f7b4c]" />
+                            {user.card_number}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">Karta biriktirilmagan</span>
+                        )}
+                      </td>
+                      <td className="p-3.5 text-right font-bold text-[#0f7b4c] text-sm">
+                        {formatCurrency(user.cashback_balance)}
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <button
+                          onClick={() => {
+                            setEditingUser(user);
+                            setEditingName(user.full_name || user.name || '');
+                            setNewBalance(user.cashback_balance || 0);
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-[#0f7b4c] hover:text-white font-semibold text-xs transition-colors flex items-center gap-1 mx-auto"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" /> Tahrirlash
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-slate-400">
@@ -276,28 +288,36 @@ export default function UsersManagement() {
         </div>
       </div>
 
-      {/* Edit Balance Modal */}
+      {/* Edit User Modal */}
       {editingUser && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-[#0f7b4c]" /> Balansni Tahrirlash
+                <Edit3 className="w-5 h-5 text-[#0f7b4c]" /> Mijoz Ma'lumotlarini Tahrirlash
               </h3>
               <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                <p className="font-semibold text-slate-900">{editingUser.full_name || 'Noma\'lum'}</p>
-                <p className="text-slate-500 font-mono">{editingUser.phone}</p>
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Mijoz Ismi va Familiyasi:
+                </label>
+                <input
+                  type="text"
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  placeholder="Mijoz ismini kiriting..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c]"
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Yangi Keshbek Balansi (so'm):
+                  Keshbek Balansi (so'm):
                 </label>
                 <input
                   type="number"
@@ -306,24 +326,28 @@ export default function UsersManagement() {
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-base font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c]"
                 />
               </div>
-            </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setEditingUser(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
-              >
-                Bekor qilish
-              </button>
-              <button
-                type="button"
-                onClick={handleUpdateBalance}
-                className="px-4 py-2 rounded-xl bg-[#0f7b4c] hover:bg-[#0a5c39] text-white text-xs font-bold shadow-md shadow-emerald-900/10"
-              >
-                Saqlash
-              </button>
-            </div>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-500 space-y-1">
+                <p>Telefon: <strong className="text-slate-800">{editingUser.phone || '—'}</strong></p>
+                <p>Karta: <strong className="text-slate-800">{editingUser.card_number || '—'}</strong></p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[#0f7b4c] hover:bg-[#0a5c39] text-white text-xs font-bold shadow-md shadow-emerald-900/10"
+                >
+                  Saqlash
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -3,26 +3,39 @@ import {
   RefreshCw, 
   Bell, 
   Fuel, 
-  CheckCircle2, 
-  XCircle,
-  Clock
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 
-export default function Header({ title, stationStatus, onRefresh, isRefreshing }) {
+export default function Header({ 
+  title, 
+  stationStatus, 
+  onRefresh, 
+  isRefreshing,
+  isCollapsed,
+  onToggleSidebar,
+  onOpenMobileMenu
+}) {
   return (
-    <header className="h-20 border-b border-slate-200 bg-white px-8 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-      {/* Title & Header Text */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-          {title}
-        </h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          "KeshBak" Zapravka tizimini markaziy boshqaruv paneli
-        </p>
+    <header className="h-20 border-b border-slate-200 bg-white px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 shadow-sm transition-all">
+      {/* Left section: Toggle button & Title */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Toggle Menu Button */}
+        
+
+        <div>
+          <h2 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight">
+            {title}
+          </h2>
+          <p className="hidden sm:block text-xs text-slate-500 mt-0.5">
+            "KeshBak" Zapravka tizimini markaziy boshqaruv paneli
+          </p>
+        </div>
       </div>
 
-      {/* Action items & Station Status Badge */}
-      <div className="flex items-center gap-4">
+      {/* Right section: Station Status & Actions */}
+      <div className="flex items-center gap-2 sm:gap-4">
         {/* Station Status Quick Pill */}
         {stationStatus && (
           <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50">
