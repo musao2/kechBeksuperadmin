@@ -11,7 +11,8 @@ import {
   Plus, 
   RefreshCw, 
   Sliders,
-  Fuel
+  Fuel,
+  X
 } from 'lucide-react';
 
 export default function StationSettings({ onStationUpdated }) {
@@ -184,7 +185,7 @@ export default function StationSettings({ onStationUpdated }) {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              Stansiya Sozlamalari 
+              Stansiya Sozlamalari
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
               O'zgarishlar mijoz ilovasida va QR skanerdagi keshbekda REAL-TIME o'zgaradi
@@ -194,49 +195,53 @@ export default function StationSettings({ onStationUpdated }) {
 
         {/* Live Status Switch */}
         <div className="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-          <div>
-            <div className="text-xs font-semibold text-slate-500">Stansiya Holati:</div>
-            <div className={`text-sm font-bold ${form.is_open ? 'text-[#0f7b4c]' : 'text-rose-600'}`}>
-              {form.is_open ? 'OCHIQ (Ishlayapti)' : 'YOPIQ (Hozir yopiq)'}
-            </div>
+          <div className="text-right">
+            <span className="text-xs font-bold text-slate-800 block">Stansiya Holati:</span>
+            <span className={`text-[11px] font-semibold ${form.is_open ? 'text-[#0f7b4c]' : 'text-rose-600'}`}>
+              {form.is_open ? '● OCHIQ (Ishlamoqda)' : '● YOPIQ (Vaqtinchalik)'}
+            </span>
           </div>
+
           <button
             type="button"
             onClick={() => setForm(prev => ({ ...prev, is_open: !prev.is_open }))}
-            className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors duration-300 ${
-              form.is_open ? 'bg-[#0f7b4c] justify-end' : 'bg-slate-300 justify-start'
+            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${
+              form.is_open ? 'bg-[#0f7b4c]' : 'bg-slate-300'
             }`}
           >
-            <span className="w-6 h-6 rounded-full bg-white shadow-md transform transition-transform duration-300"></span>
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                form.is_open ? 'translate-x-8' : 'translate-x-1'
+              }`}
+            />
           </button>
         </div>
       </div>
 
-      {/* Main Settings Form */}
-      <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Column: Form Inputs */}
-        <div className="lg:col-span-2 space-y-6">
+      {/* Main Settings Form Grid */}
+      <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Column: General Info & Fuel Types */}
+        <div className="space-y-6">
           <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-5">
-            <h3 className="text-sm font-bold text-[#0f7b4c] uppercase tracking-wider flex items-center gap-2">
-              <Sliders className="w-4 h-4" /> Asosiy Parametrlar
+            <h3 className="text-sm font-bold text-[#0f7b4c] uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
+              <Sliders className="w-4 h-4" /> Asosiy Ma'lumotlar
             </h3>
 
             {/* Stansiya Nomi */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Zapravka Stansiyasi Nomi:
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+                <Fuel className="w-3.5 h-3.5 text-[#0f7b4c]" /> Stansiya Nomi (`name`):
               </label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Masalan: Lukoil Yunusobod"
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c] font-medium"
+                placeholder="Stansiya nomini kiriting..."
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm font-semibold focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c]"
               />
             </div>
 
-            {/* Keshbek Foizi */}
+            {/* Standard Keshbek % */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
                 <Percent className="w-3.5 h-3.5 text-[#0f7b4c]" /> Standard Keshbek Foizi (`cashback_percent`):
@@ -253,16 +258,13 @@ export default function StationSettings({ onStationUpdated }) {
                 />
                 <span className="absolute right-4 top-2.5 font-bold text-[#0f7b4c] text-sm">%</span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Mijoz har bir yoqilg'i quyish tranzaksiyasidan oladigan standart keshbek foizi.
-              </p>
             </div>
 
             {/* Telefon & Ish Vaqti */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
-                  <Phone className="w-3.5 h-3.5 text-[#0f7b4c]" /> Telefon Raqami (`phone`):
+                  <Phone className="w-3.5 h-3.5 text-[#0f7b4c]" /> Telefon:
                 </label>
                 <input
                   type="text"
@@ -272,10 +274,9 @@ export default function StationSettings({ onStationUpdated }) {
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c]"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-[#0f7b4c]" /> Ish Vaqti (`work_hours`):
+                  <Clock className="w-3.5 h-3.5 text-[#0f7b4c]" /> Ish Vaqti:
                 </label>
                 <input
                   type="text"
@@ -290,27 +291,64 @@ export default function StationSettings({ onStationUpdated }) {
             {/* Manzil */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-[#0f7b4c]" /> Manzil (`address`):
+                <MapPin className="w-3.5 h-3.5 text-[#0f7b4c]" /> Manzil:
               </label>
               <input
                 type="text"
                 value={form.address}
                 onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))}
-                placeholder="Masalan: Yunusobod tumani, 14-mavze, 7-uy"
+                placeholder="Manzilni kiriting..."
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c]"
               />
             </div>
           </div>
 
           {/* Yoqilg'i turlari (Fuel Types Tags) */}
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-[#0f7b4c] uppercase tracking-wider flex items-center gap-2">
-              <Fuel className="w-4 h-4" /> Mavjud Yoqilg'i Turlari (`fuel_types`)
-            </h3>
-            
-            {/* Presets badges */}
+          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-[#0f7b4c] uppercase tracking-wider flex items-center gap-2">
+                <Fuel className="w-4 h-4 text-[#0f7b4c]" /> Mavjud Yoqilg'i Turlari
+              </h3>
+              <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-[#0f7b4c] border border-emerald-200">
+                {form.fuel_types.length} ta tanlandi
+              </span>
+            </div>
+
+            {/* Currently Active Added Fuel Badges */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                Stansiyada belgilangan yoqilg'ilar (Mijoz ilovasiga chiqadi):
+              </span>
+              {form.fuel_types.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {form.fuel_types.map((fuel) => (
+                    <span
+                      key={fuel}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0f7b4c] text-white text-xs font-bold shadow-sm"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {fuel}
+                      <button
+                        type="button"
+                        onClick={() => toggleFuelTag(fuel)}
+                        className="ml-1 text-emerald-200 hover:text-white hover:bg-emerald-800 rounded-full p-0.5 transition-colors"
+                        title={`${fuel} ni o'chirish`}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-amber-600 italic py-1">
+                  Hali birorta ham yoqilg'i turi tanlanmagan. Pastdagi tugmalar yoki kiritish maydoni orqali qo'shing.
+                </p>
+              )}
+            </div>
+
+            {/* Quick Presets Toggle Buttons */}
             <div className="space-y-2">
-              <span className="text-xs text-slate-500">Tezkor tanlash:</span>
+              <span className="text-xs font-semibold text-slate-600 block">Tezkor tanlash (Presets):</span>
               <div className="flex flex-wrap gap-2">
                 {availablePresetFuels.map((fuel) => {
                   const selected = form.fuel_types.includes(fuel);
@@ -319,34 +357,41 @@ export default function StationSettings({ onStationUpdated }) {
                       key={fuel}
                       type="button"
                       onClick={() => toggleFuelTag(fuel)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1 ${
                         selected
-                          ? 'bg-[#0f7b4c] text-white border-[#0f7b4c] shadow-sm'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-emerald-500'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-500/20'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50'
                       }`}
                     >
-                      {selected ? '✓ ' : '+ '}{fuel}
+                      {selected ? <CheckCircle2 className="w-3.5 h-3.5 text-white" /> : <Plus className="w-3.5 h-3.5 text-slate-400" />}
+                      {fuel}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Custom tag input */}
+            {/* Custom Fuel Add Form */}
             <div className="pt-2 flex gap-2">
               <input
                 type="text"
                 value={newFuelInput}
                 onChange={(e) => setNewFuelInput(e.target.value)}
-                placeholder="Yangi yoqilg'i turi (Masalan: Eco-Propan)"
-                className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomFuel();
+                  }
+                }}
+                placeholder="Yangi yoqilg'i turi (Masalan: Eco-Propan)..."
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c]"
               />
               <button
                 type="button"
                 onClick={addCustomFuel}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold hover:bg-slate-700 flex items-center gap-1"
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
               >
-                <Plus className="w-3.5 h-3.5" /> Qo'shish
+                <Plus className="w-4 h-4" /> Qo'shish
               </button>
             </div>
           </div>
