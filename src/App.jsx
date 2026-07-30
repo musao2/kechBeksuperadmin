@@ -5,9 +5,12 @@ import DashboardOverview from './pages/DashboardOverview';
 import StationSettings from './pages/StationSettings';
 import UsersManagement from './pages/UsersManagement';
 import TransactionsHistory from './pages/TransactionsHistory';
+import AutoLockOverlay from './components/AutoLockOverlay';
+import { useInactivityLock } from './hooks/useInactivityLock';
 import { supabase } from './lib/supabase';
 
 export default function App() {
+  const { isLocked, lock, unlock } = useInactivityLock(5 * 60 * 1000); // 5 minut harakatsizlik
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLive, setIsLive] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -113,6 +116,7 @@ export default function App() {
           isRefreshing={isRefreshing}
           isCollapsed={isCollapsed}
           onToggleSidebar={handleToggleSidebar}
+          onLock={lock}
         />
 
         {/* Page Views Container */}
@@ -132,6 +136,12 @@ export default function App() {
           {activeTab === 'transactions' && <TransactionsHistory />}
         </main>
       </div>
+
+      {/* Auto Lock Screen Overlay (5 Min Inactivity) */}
+      <AutoLockOverlay 
+        isLocked={isLocked} 
+        onUnlock={unlock} 
+      />
     </div>
   );
 }

@@ -12,7 +12,8 @@ import {
   RefreshCw, 
   Sliders,
   Fuel,
-  X
+  X,
+  Zap
 } from 'lucide-react';
 
 export default function StationSettings({ onStationUpdated }) {
@@ -187,38 +188,41 @@ export default function StationSettings({ onStationUpdated }) {
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               Stansiya Sozlamalari
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              O'zgarishlar mijoz ilovasida va QR skanerdagi keshbekda REAL-TIME o'zgaradi
+            <p className="text-xs text-slate-500 mt-1">
+              Zapravka parametrlarini tahrirlang va real-vaqt rejimida saqlang
             </p>
           </div>
         </div>
 
-        {/* Live Status Switch */}
-        <div className="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-          <div className="text-right">
-            <span className="text-xs font-bold text-slate-800 block">Stansiya Holati:</span>
-            <span className={`text-[11px] font-semibold ${form.is_open ? 'text-[#0f7b4c]' : 'text-rose-600'}`}>
-              {form.is_open ? '● OCHIQ (Ishlamoqda)' : '● YOPIQ (Vaqtinchalik)'}
-            </span>
-          </div>
+        {/* Right Header Action Controls */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Live Status Switch */}
+          <div className="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+            <div className="text-right">
+              <span className="text-xs font-bold text-slate-800 block">Stansiya Holati:</span>
+              <span className={`text-[11px] font-semibold ${form.is_open ? 'text-[#0f7b4c]' : 'text-rose-600'}`}>
+                {form.is_open ? '● OCHIQ (Ishlamoqda)' : '● YOPIQ (Vaqtinchalik)'}
+              </span>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setForm(prev => ({ ...prev, is_open: !prev.is_open }))}
-            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${
-              form.is_open ? 'bg-[#0f7b4c]' : 'bg-slate-300'
-            }`}
-          >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                form.is_open ? 'translate-x-8' : 'translate-x-1'
+            <button
+              type="button"
+              onClick={() => setForm(prev => ({ ...prev, is_open: !prev.is_open }))}
+              className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${
+                form.is_open ? 'bg-[#0f7b4c]' : 'bg-slate-300'
               }`}
-            />
-          </button>
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                  form.is_open ? 'translate-x-8' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Settings Form Grid */}
+      {/* Settings Form */}
       <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column: General Info & Fuel Types */}
         <div className="space-y-6">
@@ -431,8 +435,9 @@ export default function StationSettings({ onStationUpdated }) {
                 </>
               )}
             </button>
-            <p className="text-[11px] text-center text-slate-400">
-              ⚡️ O'zgarishlar darhol mijozlar mobil ilovalarida namoyon bo'ladi.
+            <p className="text-[11px] text-center text-slate-400 flex items-center justify-center gap-1">
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span>O'zgarishlar darhol mijozlar mobil ilovalarida namoyon bo'ladi.</span>
             </p>
           </div>
         </div>

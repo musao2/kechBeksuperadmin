@@ -5,7 +5,8 @@ import {
   Fuel, 
   Menu,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Lock
 } from 'lucide-react';
 
 export default function Header({ 
@@ -15,7 +16,8 @@ export default function Header({
   isRefreshing,
   isCollapsed,
   onToggleSidebar,
-  onOpenMobileMenu
+  onOpenMobileMenu,
+  onLock
 }) {
   return (
     <header className="h-20 border-b border-slate-200 bg-white px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 shadow-sm transition-all">
@@ -60,6 +62,16 @@ export default function Header({
           title="Ma'lumotlarni yangilash"
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#0f7b4c]' : ''}`} />
+        </button>
+
+        {/* Manual Lock Screen Button */}
+        <button
+          onClick={onLock}
+          className="p-2.5 rounded-xl text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-200/80 flex items-center gap-1.5 text-xs font-semibold"
+          title="Ekranni hoziroq bloklash (5 daqiqa harakatsizlikda ham avtomatik bloklanadi)"
+        >
+          <Lock className="w-4 h-4 text-amber-600" />
+          <span className="hidden md:inline">Bloklash</span>
         </button>
 
         {/* Notifications Icon */}
