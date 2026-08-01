@@ -59,7 +59,7 @@ function MainLayout() {
   };
 
   const subscribeStationStatus = () => {
-    if (!isSupabaseConfigured) return () => {};
+    if (!isSupabaseConfigured) return () => { };
     const channelTopic = `header_station_status_${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
       .channel(channelTopic)
@@ -132,9 +132,9 @@ function MainLayout() {
 
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Sidebar Navigation */}
-        <Sidebar 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           isLive={isLive && isSupabaseConfigured}
           isCollapsed={isCollapsed}
           setIsCollapsed={setIsCollapsed}
@@ -143,49 +143,49 @@ function MainLayout() {
           onOpenAccountSettings={() => setIsAccountModalOpen(true)}
         />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header Bar */}
-        <Header 
-          title={pageTitles[activeTab]} 
-          stationStatus={stationStatus}
-          onRefresh={handleGlobalRefresh}
-          isRefreshing={isRefreshing}
-          isCollapsed={isCollapsed}
-          onToggleSidebar={handleToggleSidebar}
-          onLock={lock}
-          onOpenAccountSettings={() => setIsAccountModalOpen(true)}
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Header Bar */}
+          <Header
+            title={pageTitles[activeTab]}
+            stationStatus={stationStatus}
+            onRefresh={handleGlobalRefresh}
+            isRefreshing={isRefreshing}
+            isCollapsed={isCollapsed}
+            onToggleSidebar={handleToggleSidebar}
+            onLock={lock}
+            onOpenAccountSettings={() => setIsAccountModalOpen(true)}
+          />
+
+          {/* Page Views Container */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-8">
+            {activeTab === 'dashboard' && <DashboardOverview />}
+            {activeTab === 'station' && (
+              <StationSettings
+                onStationUpdated={(updated) => {
+                  setStationStatus({
+                    is_open: Boolean(updated.is_open),
+                    cashback_percent: Number(updated.cashback_percent || 5.0)
+                  });
+                }}
+              />
+            )}
+            {activeTab === 'users' && <UsersManagement />}
+            {activeTab === 'transactions' && <TransactionsHistory />}
+          </main>
+        </div>
+
+        {/* Auto Lock Screen Overlay (5 Min Inactivity) */}
+        <AutoLockOverlay
+          isLocked={isLocked}
+          onUnlock={unlock}
         />
 
-        {/* Page Views Container */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-8">
-          {activeTab === 'dashboard' && <DashboardOverview />}
-          {activeTab === 'station' && (
-            <StationSettings 
-              onStationUpdated={(updated) => {
-                setStationStatus({
-                  is_open: Boolean(updated.is_open),
-                  cashback_percent: Number(updated.cashback_percent || 5.0)
-                });
-              }} 
-            />
-          )}
-          {activeTab === 'users' && <UsersManagement />}
-          {activeTab === 'transactions' && <TransactionsHistory />}
-        </main>
-      </div>
-
-      {/* Auto Lock Screen Overlay (5 Min Inactivity) */}
-      <AutoLockOverlay 
-        isLocked={isLocked} 
-        onUnlock={unlock} 
-      />
-
-      {/* Account Profile & Security Settings Modal (Email & Password change) */}
-      <AccountSettingsModal 
-        isOpen={isAccountModalOpen} 
-        onClose={() => setIsAccountModalOpen(false)} 
-      />
+        {/* Account Profile & Security Settings Modal (Email & Password change) */}
+        <AccountSettingsModal
+          isOpen={isAccountModalOpen}
+          onClose={() => setIsAccountModalOpen(false)}
+        />
       </div>
     </div>
   );

@@ -4,9 +4,9 @@ const rawUrl = import.meta.env.VITE_SUPABASE_URL;
 const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(
-  rawUrl && 
-  rawKey && 
-  rawUrl !== 'your_supabase_url_here' && 
+  rawUrl &&
+  rawKey &&
+  rawUrl !== 'your_supabase_url_here' &&
   !rawUrl.includes('placeholder.supabase.co')
 );
 
