@@ -43,12 +43,21 @@ export default function TransactionsHistory() {
     try {
       const { data, error } = await supabase
         .from('transactions')
-        .select('*')
+        .select('*, profiles:user_id(name, phone)')
         .order('created_at', { ascending: false })
         .limit(500);
 
-      if (error) throw error;
-      setTransactions(data || []);
+      if (error) {
+        console.warn('Error fetching joined transactions, using fallback:', error);
+        const { data: fallbackData } = await supabase
+          .from('transactions')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(500);
+        setTransactions(fallbackData || []);
+      } else {
+        setTransactions(data || []);
+      }
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
@@ -61,9 +70,24 @@ export default function TransactionsHistory() {
     const channelTopic = `transactions_${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
       .channel(channelTopic)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, async (payload) => {
         if (payload.new) {
-          setTransactions((prev) => [payload.new, ...prev]);
+          let newTx = payload.new;
+          if (newTx.user_id && !newTx.profiles) {
+            try {
+              const { data: prof } = await supabase
+                .from('profiles')
+                .select('name, phone')
+                .eq('id', newTx.user_id)
+                .maybeSingle();
+              if (prof) {
+                newTx.profiles = prof;
+              }
+            } catch (e) {
+              console.error('Error fetching profile for real-time tx:', e);
+            }
+          }
+          setTransactions((prev) => [newTx, ...prev]);
         }
       });
 
@@ -72,6 +96,24 @@ export default function TransactionsHistory() {
     return () => {
       supabase.removeChannel(channel);
     };
+  };
+
+  const getUserName = (t) => {
+    if (t.profiles && (t.profiles.name || t.profiles.full_name)) {
+      return t.profiles.name || t.profiles.full_name;
+    }
+    if (t.user_name) return t.user_name;
+    if (t.full_name) return t.full_name;
+    if (t.name) return t.name;
+    return 'Mijoz';
+  };
+
+  const getUserPhone = (t) => {
+    if (t.profiles && t.profiles.phone) {
+      return t.profiles.phone;
+    }
+    if (t.phone) return t.phone;
+    return '—';
   };
 
   const formatCurrency = (val) => {
@@ -139,10 +181,11 @@ export default function TransactionsHistory() {
       (filterType === 'EARN' && isEarn) ||
       (filterType === 'WITHDRAW' && !isEarn);
 
-    const userName = t.user_name || t.full_name || t.name || '';
+    const userName = getUserName(t);
+    const userPhone = getUserPhone(t);
     const searchMatch = !searchQuery || 
       userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.phone || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      userPhone.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (t.fuel_type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (t.code || '').toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -172,8 +215,8 @@ export default function TransactionsHistory() {
       t.id,
       t.created_at,
       isTransactionEarn(t) ? 'BERILGAN' : 'YECHILGAN',
-      `"${t.user_name || t.full_name || t.name || ''}"`,
-      `"${t.phone || ''}"`,
+      `"${getUserName(t)}"`,
+      `"${getUserPhone(t)}"`,
       t.amount || 0,
       t.cashback_amount || 0,
       t.fuel_type || ''
@@ -422,9 +465,9 @@ export default function TransactionsHistory() {
                       </td>
                       <td className="p-3.5">
                         <div className="font-bold text-slate-900">
-                          {t.user_name || t.full_name || t.name || 'Mijoz'}
+                          {getUserName(t)}
                         </div>
-                        <div className="text-[11px] text-slate-400 font-mono">{t.phone || '—'}</div>
+                        <div className="text-[11px] text-slate-400 font-mono">{getUserPhone(t)}</div>
                       </td>
                       <td className="p-3.5">
                         {t.fuel_type ? (

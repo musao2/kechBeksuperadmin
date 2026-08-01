@@ -126,7 +126,7 @@ function MainLayout() {
       {!isSupabaseConfigured && (
         <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-extrabold text-center flex items-center justify-center gap-2 shrink-0 z-50">
           <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span>DIQQAT: Vercel sozlamalarida VITE_SUPABASE_URL va VITE_SUPABASE_ANON_KEY hali o'rnatilmagan! Vercel -> Settings -> Environment Variables da ularni kiritib, Redeploy bosing.</span>
+          <span>DIQQAT: Vercel sozlamalarida VITE_SUPABASE_URL va VITE_SUPABASE_ANON_KEY hali o'rnatilmagan! Vercel &rarr; Settings &rarr; Environment Variables da ularni kiritib, Redeploy bosing.</span>
         </div>
       )}
 
