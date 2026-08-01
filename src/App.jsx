@@ -9,6 +9,7 @@ import AutoLockOverlay from './components/AutoLockOverlay';
 import AccountSettingsModal from './components/AccountSettingsModal';
 import LoginPage from './pages/LoginPage';
 import { useInactivityLock } from './hooks/useInactivityLock';
+import { AlertTriangle } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -120,18 +121,27 @@ function MainLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
-      {/* Sidebar Navigation */}
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        isLive={isLive}
-        isCollapsed={isCollapsed}
-        setIsCollapsed={setIsCollapsed}
-        mobileOpen={mobileOpen}
-        setMobileOpen={setMobileOpen}
-        onOpenAccountSettings={() => setIsAccountModalOpen(true)}
-      />
+    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
+      {/* Vercel Environment Variables Warning Banner */}
+      {!isSupabaseConfigured && (
+        <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-extrabold text-center flex items-center justify-center gap-2 shrink-0 z-50">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>DIQQAT: Vercel sozlamalarida VITE_SUPABASE_URL va VITE_SUPABASE_ANON_KEY hali o'rnatilmagan! Vercel -> Settings -> Environment Variables da ularni kiritib, Redeploy bosing.</span>
+        </div>
+      )}
+
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* Sidebar Navigation */}
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          isLive={isLive && isSupabaseConfigured}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+          onOpenAccountSettings={() => setIsAccountModalOpen(true)}
+        />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -176,6 +186,7 @@ function MainLayout() {
         isOpen={isAccountModalOpen} 
         onClose={() => setIsAccountModalOpen(false)} 
       />
+      </div>
     </div>
   );
 }
