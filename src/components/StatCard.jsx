@@ -31,28 +31,28 @@ export default function StatCard({ title, value, subtext, icon: Icon, trend, col
   const theme = colorMap[color] || colorMap.emerald;
 
   return (
-    <div className={`p-6 rounded-2xl bg-white border border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden`}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+    <div className="p-4 sm:p-4.5 rounded-2xl bg-white border border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden flex flex-col justify-between">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide truncate">
           {title}
         </span>
         {Icon && (
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme.iconBg}`}>
-            <Icon className="w-5 h-5" />
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${theme.iconBg}`}>
+            <Icon className="w-4 h-4" />
           </div>
         )}
       </div>
 
-      <div className="mt-3">
-        <h3 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
+      <div className="mt-2 mb-1">
+        <h3 className="text-lg sm:text-xl xl:text-[22px] font-extrabold text-slate-900 tracking-tight leading-snug">
           {value}
         </h3>
       </div>
 
       {subtext && (
-        <p className="mt-2 text-xs text-slate-500 font-medium flex items-center gap-1.5">
-          {trend && <span className="font-semibold text-[#0f7b4c]">{trend}</span>}
-          <span>{subtext}</span>
+        <p className="mt-1 text-xs text-slate-500 font-medium flex items-center gap-1.5 truncate">
+          {trend && <span className="font-semibold text-emerald-600 shrink-0">{trend}</span>}
+          <span className="truncate">{subtext}</span>
         </p>
       )}
     </div>

@@ -140,11 +140,11 @@ export default function DashboardOverview() {
       </div>
 
       {/* KPI Cards Grid (4 Asosiy Ko'rsatkich) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Jami Foydalanuvchilar"
           value={loading ? '...' : stats.totalUsers}
-          subtext="Ro'yxatdan o'tgan mijozlar (`profiles`)"
+          subtext="Ro'yxatdan o'tgan mijozlar"
           icon={Users}
           trend="+100%"
           color="blue"
@@ -152,21 +152,21 @@ export default function DashboardOverview() {
         <StatCard
           title="Tarqatilgan Keshbek"
           value={loading ? '...' : formatCurrency(stats.totalCashbackGiven)}
-          subtext="Jami berilgan keshbeklar"
+          subtext="Berilgan jami keshbek"
           icon={ArrowUpRight}
           color="emerald"
         />
         <StatCard
           title="Yechib Olingan Keshbek"
           value={loading ? '...' : formatCurrency(stats.totalCashbackWithdrawn)}
-          subtext="Mijozlar tomonidan ishlatilgan"
+          subtext="Ishlatilgan jami keshbek"
           icon={ArrowDownLeft}
           color="purple"
         />
         <StatCard
           title="Bugungi Savdo"
           value={loading ? '...' : formatCurrency(stats.todaySales)}
-          subtext={`Bugun: ${formatCurrency(stats.todayCashbackGiven)} keshbek`}
+          subtext={`Bugungi keshbek: ${formatCurrency(stats.todayCashbackGiven)}`}
           icon={DollarSign}
           color="amber"
         />

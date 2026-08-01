@@ -6,8 +6,8 @@ export default function AutoLockOverlay({ isLocked, onUnlock }) {
   const [error, setError] = useState('');
   const [isShaking, setIsShaking] = useState(false);
 
-  // Read PIN code from .env environment variable (defaults to 123456)
-  const EXPECTED_PIN = import.meta.env.VITE_SECURITY_CODE || '123456';
+  // Read PIN code from .env environment variable
+  const EXPECTED_PIN = import.meta.env.VITE_SECURITY_CODE;
 
   useEffect(() => {
     if (isLocked) {
@@ -134,7 +134,7 @@ export default function AutoLockOverlay({ isLocked, onUnlock }) {
           ) : (
             <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 font-medium text-center">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Standart PIN-kod: <strong>123456</strong> (yoki .env tayinlangan)</span>
+              <span>Tizim .env dagi 6 xonali maxfiy PIN-kod bilan himoyalangan</span>
             </div>
           )}
 

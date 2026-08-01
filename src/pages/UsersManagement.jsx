@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { 
-  Users, 
-  Search, 
-  Plus, 
-  Edit3, 
-  DollarSign, 
-  Phone, 
-  CreditCard, 
-  RefreshCw, 
-  X, 
+import {
+  Users,
+  Search,
+  Plus,
+  Edit3,
+  DollarSign,
+  Phone,
+  CreditCard,
+  RefreshCw,
+  X,
   Download,
   UserCheck
 } from 'lucide-react';
@@ -18,7 +18,7 @@ export default function UsersManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -88,10 +88,10 @@ export default function UsersManagement() {
       const cleanName = editingName.trim();
       const { error } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           full_name: cleanName,
           name: cleanName,
-          cashback_balance: updatedBalance 
+          cashback_balance: updatedBalance
         })
         .eq('id', editingUser.id);
 
@@ -144,7 +144,7 @@ export default function UsersManagement() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-[#0f7b4c]" /> Foydalanuvchilar Boshqaruvi 
+            <Users className="w-5 h-5 text-[#0f7b4c]" /> Foydalanuvchilar Boshqaruvi
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Ro'yxatdan o'tgan mijozlar, ularning karta va keshbek balanslarini boshqarish
@@ -158,12 +158,7 @@ export default function UsersManagement() {
           >
             <Download className="w-4 h-4" /> Export CSV
           </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2.5 rounded-xl bg-[#0f7b4c] hover:bg-[#0a5c39] text-white text-xs font-bold shadow-md shadow-emerald-900/10 flex items-center gap-2 transition-all"
-          >
-            <Plus className="w-4 h-4" /> Yangi Foydalanuvchi Qo'shish
-          </button>
+         
         </div>
       </div>
 
