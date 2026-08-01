@@ -17,7 +17,8 @@ export default function Header({
   isCollapsed,
   onToggleSidebar,
   onOpenMobileMenu,
-  onLock
+  onLock,
+  onOpenAccountSettings
 }) {
   return (
     <header className="h-20 border-b border-slate-200 bg-white px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 shadow-sm transition-all">
@@ -74,13 +75,17 @@ export default function Header({
           <span className="hidden md:inline">Bloklash</span>
         </button>
 
-        {/* Notifications Icon */}
-        <div className="relative">
-          <button className="p-2.5 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors border border-slate-200">
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#0f7b4c]"></span>
-          </button>
-        </div>
+        {/* User Account Settings Button */}
+        <button
+          onClick={onOpenAccountSettings}
+          className="p-2.5 rounded-xl text-slate-700 hover:text-[#0f7b4c] hover:bg-slate-100 transition-colors border border-slate-200 flex items-center gap-2 text-xs font-semibold"
+          title="Profil va Xavfsizlik Sozlamalari (Email & Parol)"
+        >
+          <div className="w-5 h-5 rounded-full bg-emerald-100 text-[#0f7b4c] flex items-center justify-center font-extrabold text-[10px]">
+            SA
+          </div>
+          <span className="hidden md:inline">Profil</span>
+        </button>
       </div>
     </header>
   );

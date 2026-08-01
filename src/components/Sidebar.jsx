@@ -7,8 +7,11 @@ import {
   ShieldCheck, 
   ChevronRight,
   ChevronLeft,
-  X
+  X,
+  Settings,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar({ 
   activeTab, 
@@ -17,8 +20,10 @@ export default function Sidebar({
   isCollapsed, 
   setIsCollapsed,
   mobileOpen,
-  setMobileOpen
+  setMobileOpen,
+  onOpenAccountSettings
 }) {
+  const { user, logout } = useAuth();
   const menuItems = [
     {
       id: 'dashboard',
@@ -179,25 +184,52 @@ export default function Sidebar({
 
         {/* Admin Profile Footer */}
         <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-          <div className={`flex items-center ${isCollapsed && !mobileOpen ? 'justify-center' : 'gap-3'}`}>
-            <div 
-              className="w-9 h-9 rounded-full bg-emerald-100 text-[#0f7b4c] flex items-center justify-center font-extrabold text-sm border border-emerald-200 shrink-0"
-              title="Super Admin (admin@keshbak.uz)"
-            >
-              SA
-            </div>
-            {(!isCollapsed || mobileOpen) && (
-              <>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">
+          <div className={`flex items-center ${isCollapsed && !mobileOpen ? 'justify-center flex-col gap-2' : 'justify-between gap-2'}`}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div 
+                onClick={onOpenAccountSettings}
+                className="w-9 h-9 rounded-full bg-emerald-100 text-[#0f7b4c] flex items-center justify-center font-extrabold text-xs border border-emerald-200 shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                title="Profil sozlamalari (Email & Parol)"
+              >
+                SA
+              </div>
+              {(!isCollapsed || mobileOpen) && (
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={onOpenAccountSettings}>
+                  <p className="text-xs font-bold text-slate-800 truncate hover:text-[#0f7b4c] transition-colors">
                     Super Admin
                   </p>
-                  <p className="text-[10px] text-slate-500 truncate">
-                    admin@keshbak.uz
+                  <p className="text-[10px] text-slate-500 truncate font-mono">
+                    {user?.email || 'admin@keshbak.uz'}
                   </p>
                 </div>
-                <ShieldCheck className="w-4 h-4 text-[#0f7b4c] shrink-0" title="Bosh administrator" />
-              </>
+              )}
+            </div>
+
+            {(!isCollapsed || mobileOpen) ? (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={onOpenAccountSettings}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-[#0f7b4c] hover:bg-slate-200/60 transition-colors"
+                  title="Profil va Xavfsizlik Sozlamalari (Email & Parol)"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={logout}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                  title="Tizimdan chiqish"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={logout}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                title="Tizimdan chiqish"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             )}
           </div>
         </div>

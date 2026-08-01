@@ -6,16 +6,21 @@ import StationSettings from './pages/StationSettings';
 import UsersManagement from './pages/UsersManagement';
 import TransactionsHistory from './pages/TransactionsHistory';
 import AutoLockOverlay from './components/AutoLockOverlay';
+import AccountSettingsModal from './components/AccountSettingsModal';
+import LoginPage from './pages/LoginPage';
 import { useInactivityLock } from './hooks/useInactivityLock';
 import { supabase } from './lib/supabase';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-export default function App() {
+function MainLayout() {
+  const { user, loading } = useAuth();
   const { isLocked, lock, unlock } = useInactivityLock(5 * 60 * 1000); // 5 minut harakatsizlik
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLive, setIsLive] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   const [stationStatus, setStationStatus] = useState({
     is_open: true,
@@ -23,9 +28,11 @@ export default function App() {
   });
 
   useEffect(() => {
-    fetchInitialStation();
-    subscribeStationStatus();
-  }, []);
+    if (user) {
+      fetchInitialStation();
+      subscribeStationStatus();
+    }
+  }, [user]);
 
   const fetchInitialStation = async () => {
     try {
@@ -93,6 +100,20 @@ export default function App() {
     transactions: 'Tranzaksiyalar Tarixi'
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-4">
+        <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+        <p className="text-xs text-slate-400 font-medium tracking-wider">Yuklanmoqda...</p>
+      </div>
+    );
+  }
+
+  // Show login screen if user is not logged in
+  if (!user) {
+    return <LoginPage />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
       {/* Sidebar Navigation */}
@@ -104,6 +125,7 @@ export default function App() {
         setIsCollapsed={setIsCollapsed}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
+        onOpenAccountSettings={() => setIsAccountModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -117,6 +139,7 @@ export default function App() {
           isCollapsed={isCollapsed}
           onToggleSidebar={handleToggleSidebar}
           onLock={lock}
+          onOpenAccountSettings={() => setIsAccountModalOpen(true)}
         />
 
         {/* Page Views Container */}
@@ -142,6 +165,20 @@ export default function App() {
         isLocked={isLocked} 
         onUnlock={unlock} 
       />
+
+      {/* Account Profile & Security Settings Modal (Email & Password change) */}
+      <AccountSettingsModal 
+        isOpen={isAccountModalOpen} 
+        onClose={() => setIsAccountModalOpen(false)} 
+      />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainLayout />
+    </AuthProvider>
   );
 }
