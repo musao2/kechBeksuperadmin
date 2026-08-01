@@ -41,6 +41,10 @@ export default function DashboardOverview() {
   }, []);
 
   const fetchDashboardData = async () => {
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       // 1. Fetch profiles count

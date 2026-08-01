@@ -9,7 +9,7 @@ import AutoLockOverlay from './components/AutoLockOverlay';
 import AccountSettingsModal from './components/AccountSettingsModal';
 import LoginPage from './pages/LoginPage';
 import { useInactivityLock } from './hooks/useInactivityLock';
-import { supabase } from './lib/supabase';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 function MainLayout() {
@@ -28,13 +28,17 @@ function MainLayout() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && isSupabaseConfigured) {
       fetchInitialStation();
-      subscribeStationStatus();
+      const unsub = subscribeStationStatus();
+      return () => {
+        if (unsub) unsub();
+      };
     }
   }, [user]);
 
   const fetchInitialStation = async () => {
+    if (!isSupabaseConfigured) return;
     try {
       const { data } = await supabase
         .from('station_settings')
@@ -54,6 +58,7 @@ function MainLayout() {
   };
 
   const subscribeStationStatus = () => {
+    if (!isSupabaseConfigured) return () => {};
     const channelTopic = `header_station_status_${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
       .channel(channelTopic)
