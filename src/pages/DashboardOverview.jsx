@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import StatCard from '../components/StatCard';
 import { 
   Users, 
@@ -10,7 +10,9 @@ import {
   Calendar, 
   Download,
   Activity,
-  Fuel
+  Fuel,
+  RefreshCw,
+  Inbox
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -25,26 +27,16 @@ import {
   Legend 
 } from 'recharts';
 
-const DEMO_DAILY_REPORTS = [
-  { id: 1, report_date: '2026-07-26', total_transactions: 14, cashback_given_count: 10, cashback_withdrawn_count: 4, total_cashback_given: 140000, total_cashback_withdrawn: 50000, total_sales: 2800000 },
-  { id: 2, report_date: '2026-07-27', total_transactions: 22, cashback_given_count: 16, cashback_withdrawn_count: 6, total_cashback_given: 210000, total_cashback_withdrawn: 80000, total_sales: 4200000 },
-  { id: 3, report_date: '2026-07-28', total_transactions: 28, cashback_given_count: 20, cashback_withdrawn_count: 8, total_cashback_given: 270000, total_cashback_withdrawn: 100000, total_sales: 5400000 },
-  { id: 4, report_date: '2026-07-29', total_transactions: 35, cashback_given_count: 25, cashback_withdrawn_count: 10, total_cashback_given: 350000, total_cashback_withdrawn: 140000, total_sales: 7000000 },
-  { id: 5, report_date: '2026-07-30', total_transactions: 30, cashback_given_count: 22, cashback_withdrawn_count: 8, total_cashback_given: 300000, total_cashback_withdrawn: 120000, total_sales: 6000000 },
-  { id: 6, report_date: '2026-07-31', total_transactions: 42, cashback_given_count: 32, cashback_withdrawn_count: 10, total_cashback_given: 450000, total_cashback_withdrawn: 180000, total_sales: 9000000 },
-  { id: 7, report_date: '2026-08-01', total_transactions: 18, cashback_given_count: 12, cashback_withdrawn_count: 6, total_cashback_given: 180000, total_cashback_withdrawn: 75000, total_sales: 3600000 }
-];
-
 export default function DashboardOverview() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
-    totalUsers: 9,
-    totalCashbackGiven: 1900000,
-    totalCashbackWithdrawn: 745000,
-    todaySales: 3600000,
-    todayCashbackGiven: 180000
+    totalUsers: 0,
+    totalCashbackGiven: 0,
+    totalCashbackWithdrawn: 0,
+    todaySales: 0,
+    todayCashbackGiven: 0
   });
-  const [dailyReports, setDailyReports] = useState(DEMO_DAILY_REPORTS);
+  const [dailyReports, setDailyReports] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -52,38 +44,26 @@ export default function DashboardOverview() {
 
   const fetchDashboardData = async () => {
     setLoading(true);
-    if (!isSupabaseConfigured) {
-      setStats({
-        totalUsers: 9,
-        totalCashbackGiven: 1900000,
-        totalCashbackWithdrawn: 745000,
-        todaySales: 3600000,
-        todayCashbackGiven: 180000
-      });
-      setDailyReports(DEMO_DAILY_REPORTS);
-      setLoading(false);
-      return;
-    }
 
     try {
-      // 1. Fetch profiles count
+      // 1. Fetch profiles count from Supabase
       const { count: usersCount } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
 
-      // 2. Fetch daily_reports
+      // 2. Fetch daily_reports from Supabase
       const { data: reportsData } = await supabase
         .from('daily_reports')
         .select('*')
         .order('report_date', { ascending: true });
 
-      if (reportsData && reportsData.length > 0) {
-        let totalGiven = 0;
-        let totalWithdrawn = 0;
-        let todaySalesSum = 0;
-        let todayGivenSum = 0;
-        const todayStr = new Date().toISOString().split('T')[0];
+      let totalGiven = 0;
+      let totalWithdrawn = 0;
+      let todaySalesSum = 0;
+      let todayGivenSum = 0;
+      const todayStr = new Date().toISOString().split('T')[0];
 
+      if (reportsData && reportsData.length > 0) {
         reportsData.forEach((row) => {
           totalGiven += Number(row.total_cashback_given || 0);
           totalWithdrawn += Number(row.total_cashback_withdrawn || 0);
@@ -93,28 +73,19 @@ export default function DashboardOverview() {
             todayGivenSum = Number(row.total_cashback_given || 0);
           }
         });
-
-        setStats({
-          totalUsers: usersCount || 0,
-          totalCashbackGiven: totalGiven,
-          totalCashbackWithdrawn: totalWithdrawn,
-          todaySales: todaySalesSum,
-          todayCashbackGiven: todayGivenSum
-        });
-        setDailyReports(reportsData);
-      } else {
-        setStats({
-          totalUsers: usersCount || 9,
-          totalCashbackGiven: 1900000,
-          totalCashbackWithdrawn: 745000,
-          todaySales: 3600000,
-          todayCashbackGiven: 180000
-        });
-        setDailyReports(DEMO_DAILY_REPORTS);
       }
+
+      setStats({
+        totalUsers: usersCount || 0,
+        totalCashbackGiven: totalGiven,
+        totalCashbackWithdrawn: totalWithdrawn,
+        todaySales: todaySalesSum,
+        todayCashbackGiven: todayGivenSum
+      });
+      setDailyReports(reportsData || []);
+
     } catch (err) {
-      console.error('Error loading dashboard data:', err);
-      setDailyReports(DEMO_DAILY_REPORTS);
+      console.error('Error fetching dashboard data:', err);
     } finally {
       setLoading(false);
     }
@@ -218,7 +189,12 @@ export default function DashboardOverview() {
           </div>
 
           <div className="h-72 w-full pt-4">
-            {dailyReports.length > 0 ? (
+            {loading ? (
+              <div className="h-full flex items-center justify-center text-slate-500 gap-2.5 text-sm font-medium">
+                <RefreshCw className="w-5 h-5 animate-spin text-[#0f7b4c]" />
+                <span>Ma'lumotlar yuklanmoqda...</span>
+              </div>
+            ) : dailyReports.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={dailyReports}>
                   <defs>
@@ -267,8 +243,9 @@ export default function DashboardOverview() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-                Hisobot ma'lumotlari yuklanmoqda...
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs space-y-1">
+                <Inbox className="w-8 h-8 text-slate-300" />
+                <span>Hozircha kunlik hisob-kitob ma'lumotlari mavjud emas (Baza bo'sh).</span>
               </div>
             )}
           </div>
@@ -289,7 +266,12 @@ export default function DashboardOverview() {
           </div>
 
           <div className="h-72 w-full pt-4">
-            {dailyReports.length > 0 ? (
+            {loading ? (
+              <div className="h-full flex items-center justify-center text-slate-500 gap-2.5 text-sm font-medium">
+                <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />
+                <span>Ma'lumotlar yuklanmoqda...</span>
+              </div>
+            ) : dailyReports.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyReports}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -312,8 +294,9 @@ export default function DashboardOverview() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-                Hisobot ma'lumotlari yuklanmoqda...
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs space-y-1">
+                <Inbox className="w-8 h-8 text-slate-300" />
+                <span>Hozircha tranzaksiya statistikasi mavjud emas.</span>
               </div>
             )}
           </div>
@@ -334,7 +317,8 @@ export default function DashboardOverview() {
           </div>
           <button
             onClick={exportToCSV}
-            className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-50 text-[#0f7b4c] hover:bg-emerald-100 border border-emerald-200 flex items-center gap-2 transition-colors self-start sm:self-auto"
+            disabled={dailyReports.length === 0}
+            className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-50 disabled:bg-slate-100 disabled:text-slate-400 text-[#0f7b4c] hover:bg-emerald-100 border border-emerald-200 border-slate-200 flex items-center gap-2 transition-colors self-start sm:self-auto"
           >
             <Download className="w-4 h-4" /> CSV Faylga Yuklash
           </button>
@@ -352,7 +336,16 @@ export default function DashboardOverview() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-slate-700">
-              {dailyReports.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-slate-500">
+                    <div className="flex items-center justify-center gap-2 font-medium">
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#0f7b4c]" />
+                      <span>Jadval ma'lumotlari yuklanmoqda...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : dailyReports.length > 0 ? (
                 dailyReports.map((row, idx) => (
                   <tr key={idx} className="hover:bg-slate-50 transition-colors">
                     <td className="p-3.5 font-medium text-slate-900 flex items-center gap-2">
@@ -377,8 +370,11 @@ export default function DashboardOverview() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-slate-400">
-                    Hozircha hisobotlar mavjud emas
+                  <td colSpan={5} className="p-8 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-1">
+                      <Inbox className="w-6 h-6 text-slate-300" />
+                      <span>Hozircha hisobotlar jadvalida ma'lumotlar yo'q</span>
+                    </div>
                   </td>
                 </tr>
               )}
