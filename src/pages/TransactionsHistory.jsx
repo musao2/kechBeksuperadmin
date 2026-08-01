@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { 
   TrendingUp, 
   Search, 
@@ -23,12 +23,23 @@ export default function TransactionsHistory() {
   const [datePreset, setDatePreset] = useState('ALL'); // ALL, TODAY, YESTERDAY, CUSTOM
 
   useEffect(() => {
-    fetchTransactions();
-    subscribeToTransactions();
+    if (isSupabaseConfigured) {
+      fetchTransactions();
+      const unsub = subscribeToTransactions();
+      return () => {
+        if (unsub) unsub();
+      };
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const fetchTransactions = async () => {
     setLoading(true);
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('transactions')
@@ -46,6 +57,7 @@ export default function TransactionsHistory() {
   };
 
   const subscribeToTransactions = () => {
+    if (!isSupabaseConfigured) return () => {};
     const channelTopic = `transactions_${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
       .channel(channelTopic)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
   Users,
   Search,
@@ -39,6 +39,10 @@ export default function UsersManagement() {
 
   const fetchUsers = async () => {
     setLoading(true);
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('profiles')

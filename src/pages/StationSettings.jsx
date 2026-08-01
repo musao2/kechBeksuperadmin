@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import StationMapPicker from '../components/StationMapPicker';
 import { 
   Save, 
@@ -39,12 +39,23 @@ export default function StationSettings({ onStationUpdated }) {
   const availablePresetFuels = ['AI-80', 'AI-91', 'AI-92', 'AI-95', 'AI-98', 'Dizel', 'Metan', 'Propan'];
 
   useEffect(() => {
-    fetchStationSettings();
-    subscribeToStationChanges();
+    if (isSupabaseConfigured) {
+      fetchStationSettings();
+      const unsub = subscribeToStationChanges();
+      return () => {
+        if (unsub) unsub();
+      };
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const fetchStationSettings = async () => {
     setLoading(true);
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
     try {
       const { data } = await supabase
         .from('station_settings')
@@ -75,6 +86,7 @@ export default function StationSettings({ onStationUpdated }) {
   };
 
   const subscribeToStationChanges = () => {
+    if (!isSupabaseConfigured) return () => {};
     const channelTopic = `station_settings_${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
       .channel(channelTopic)
