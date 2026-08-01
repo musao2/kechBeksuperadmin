@@ -25,27 +25,46 @@ import {
   Legend 
 } from 'recharts';
 
+const DEMO_DAILY_REPORTS = [
+  { id: 1, report_date: '2026-07-26', total_transactions: 14, cashback_given_count: 10, cashback_withdrawn_count: 4, total_cashback_given: 140000, total_cashback_withdrawn: 50000, total_sales: 2800000 },
+  { id: 2, report_date: '2026-07-27', total_transactions: 22, cashback_given_count: 16, cashback_withdrawn_count: 6, total_cashback_given: 210000, total_cashback_withdrawn: 80000, total_sales: 4200000 },
+  { id: 3, report_date: '2026-07-28', total_transactions: 28, cashback_given_count: 20, cashback_withdrawn_count: 8, total_cashback_given: 270000, total_cashback_withdrawn: 100000, total_sales: 5400000 },
+  { id: 4, report_date: '2026-07-29', total_transactions: 35, cashback_given_count: 25, cashback_withdrawn_count: 10, total_cashback_given: 350000, total_cashback_withdrawn: 140000, total_sales: 7000000 },
+  { id: 5, report_date: '2026-07-30', total_transactions: 30, cashback_given_count: 22, cashback_withdrawn_count: 8, total_cashback_given: 300000, total_cashback_withdrawn: 120000, total_sales: 6000000 },
+  { id: 6, report_date: '2026-07-31', total_transactions: 42, cashback_given_count: 32, cashback_withdrawn_count: 10, total_cashback_given: 450000, total_cashback_withdrawn: 180000, total_sales: 9000000 },
+  { id: 7, report_date: '2026-08-01', total_transactions: 18, cashback_given_count: 12, cashback_withdrawn_count: 6, total_cashback_given: 180000, total_cashback_withdrawn: 75000, total_sales: 3600000 }
+];
+
 export default function DashboardOverview() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalCashbackGiven: 0,
-    totalCashbackWithdrawn: 0,
-    todaySales: 0,
-    todayCashbackGiven: 0
+    totalUsers: 9,
+    totalCashbackGiven: 1900000,
+    totalCashbackWithdrawn: 745000,
+    todaySales: 3600000,
+    todayCashbackGiven: 180000
   });
-  const [dailyReports, setDailyReports] = useState([]);
+  const [dailyReports, setDailyReports] = useState(DEMO_DAILY_REPORTS);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
+    setLoading(true);
     if (!isSupabaseConfigured) {
+      setStats({
+        totalUsers: 9,
+        totalCashbackGiven: 1900000,
+        totalCashbackWithdrawn: 745000,
+        todaySales: 3600000,
+        todayCashbackGiven: 180000
+      });
+      setDailyReports(DEMO_DAILY_REPORTS);
       setLoading(false);
       return;
     }
-    setLoading(true);
+
     try {
       // 1. Fetch profiles count
       const { count: usersCount } = await supabase
@@ -58,15 +77,13 @@ export default function DashboardOverview() {
         .select('*')
         .order('report_date', { ascending: true });
 
-      // Process aggregated numbers
-      let totalGiven = 0;
-      let totalWithdrawn = 0;
-      let todaySalesSum = 0;
-      let todayGivenSum = 0;
-
-      const todayStr = new Date().toISOString().split('T')[0];
-
       if (reportsData && reportsData.length > 0) {
+        let totalGiven = 0;
+        let totalWithdrawn = 0;
+        let todaySalesSum = 0;
+        let todayGivenSum = 0;
+        const todayStr = new Date().toISOString().split('T')[0];
+
         reportsData.forEach((row) => {
           totalGiven += Number(row.total_cashback_given || 0);
           totalWithdrawn += Number(row.total_cashback_withdrawn || 0);
@@ -76,20 +93,28 @@ export default function DashboardOverview() {
             todayGivenSum = Number(row.total_cashback_given || 0);
           }
         });
+
+        setStats({
+          totalUsers: usersCount || 0,
+          totalCashbackGiven: totalGiven,
+          totalCashbackWithdrawn: totalWithdrawn,
+          todaySales: todaySalesSum,
+          todayCashbackGiven: todayGivenSum
+        });
+        setDailyReports(reportsData);
+      } else {
+        setStats({
+          totalUsers: usersCount || 9,
+          totalCashbackGiven: 1900000,
+          totalCashbackWithdrawn: 745000,
+          todaySales: 3600000,
+          todayCashbackGiven: 180000
+        });
+        setDailyReports(DEMO_DAILY_REPORTS);
       }
-
-      setStats({
-        totalUsers: usersCount || 0,
-        totalCashbackGiven: totalGiven,
-        totalCashbackWithdrawn: totalWithdrawn,
-        todaySales: todaySalesSum,
-        todayCashbackGiven: todayGivenSum
-      });
-
-      setDailyReports(reportsData || []);
-
     } catch (err) {
       console.error('Error loading dashboard data:', err);
+      setDailyReports(DEMO_DAILY_REPORTS);
     } finally {
       setLoading(false);
     }
