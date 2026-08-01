@@ -6,8 +6,8 @@ export default function SecurityPinModal({ isOpen, onClose, onSuccess, title, de
   const [error, setError] = useState('');
   const [isShaking, setIsShaking] = useState(false);
 
-  // Read PIN code from .env environment variable
-  const EXPECTED_PIN = import.meta.env.VITE_SECURITY_CODE;
+  // Read PIN code from .env environment variable (default: 123456)
+  const EXPECTED_PIN = import.meta.env.VITE_SECURITY_CODE || '123456';
 
   useEffect(() => {
     if (isOpen) {
