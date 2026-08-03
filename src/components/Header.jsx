@@ -1,13 +1,11 @@
 import React from 'react';
 import { 
-  RefreshCw, 
-  Bell, 
-  Fuel, 
-  Lock,
-  Settings,
-  ShieldCheck,
-  User
-} from 'lucide-react';
+  FiRefreshCw, 
+  FiLock,
+  FiSettings,
+  FiUser,
+  FiActivity
+} from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header({ 
@@ -42,7 +40,7 @@ export default function Header({
         {/* Station Status Quick Pill */}
         {stationStatus && (
           <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50/80">
-            <Fuel className="w-4 h-4 text-slate-500" />
+            <FiActivity className="w-4 h-4 text-slate-500" />
             <div className="text-xs">
               <span className="text-slate-500 font-medium">Stansiya: </span>
               <span className={`font-semibold ${stationStatus.is_open ? 'text-[#0f7b4c]' : 'text-rose-600'}`}>
@@ -62,7 +60,7 @@ export default function Header({
           className="p-2.5 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors border border-slate-200 relative group"
           title="Ma'lumotlarni yangilash"
         >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#0f7b4c]' : ''}`} />
+          <FiRefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#0f7b4c]' : ''}`} />
         </button>
 
         {/* Manual Lock Screen Button */}
@@ -71,14 +69,14 @@ export default function Header({
           className="p-2.5 rounded-xl text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-200/80 flex items-center gap-1.5 text-xs font-semibold"
           title="Ekranni hoziroq bloklash (5 daqiqa harakatsizlikda ham avtomatik bloklanadi)"
         >
-          <Lock className="w-4 h-4 text-amber-600" />
+          <FiLock className="w-4 h-4 text-amber-600" />
           <span className="hidden md:inline">Bloklash</span>
         </button>
 
-        {/* User Account Settings Button (Premium Styled) */}
+        {/* User Account Settings Button */}
         <button
           onClick={onOpenAccountSettings}
-          className="pl-2 pr-3.5 py-1.5 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-emerald-50/60 border border-slate-200/90 hover:border-emerald-300 flex items-center gap-2.5 text-xs font-bold transition-all shadow-sm hover:shadow active:scale-95 group"
+          className="pl-2 pr-3.5 py-1.5 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 flex items-center gap-2.5 text-xs font-bold transition-all shadow-sm hover:shadow active:scale-95 group"
           title="Profil va Xavfsizlik Sozlamalari (Email & Parol)"
         >
           <div className="relative shrink-0">
@@ -92,7 +90,7 @@ export default function Header({
             <span className="font-bold text-slate-800 group-hover:text-[#0f7b4c] transition-colors">
               Profil
             </span>
-            <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0f7b4c] group-hover:rotate-45 transition-all" />
+            <FiSettings className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0f7b4c] group-hover:rotate-45 transition-all" />
           </div>
         </button>
       </div>

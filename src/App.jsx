@@ -5,6 +5,7 @@ import DashboardOverview from './pages/DashboardOverview';
 import StationSettings from './pages/StationSettings';
 import UsersManagement from './pages/UsersManagement';
 import TransactionsHistory from './pages/TransactionsHistory';
+import BroadcastNotifications from './pages/BroadcastNotifications';
 import AutoLockOverlay from './components/AutoLockOverlay';
 import AccountSettingsModal from './components/AccountSettingsModal';
 import LoginPage from './pages/LoginPage';
@@ -60,23 +61,23 @@ function MainLayout() {
 
   const subscribeStationStatus = () => {
     if (!isSupabaseConfigured) return () => { };
-    const channelTopic = `header_station_status_${Math.random().toString(36).substring(2, 9)}`;
+    const channelTopic = `station_${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
       .channel(channelTopic)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'station_settings' }, (payload) => {
-        if (payload.new) {
-          setStationStatus({
-            is_open: Boolean(payload.new.is_open),
-            cashback_percent: Number(payload.new.cashback_percent || 5.0)
-          });
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'station_settings' },
+        (payload) => {
+          if (payload.new) {
+            setStationStatus({
+              is_open: Boolean(payload.new.is_open),
+              cashback_percent: Number(payload.new.cashback_percent || 5.0)
+            });
+          }
         }
-      });
+      );
 
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        setIsLive(true);
-      }
-    });
+    channel.subscribe();
 
     return () => {
       supabase.removeChannel(channel);
@@ -103,6 +104,7 @@ function MainLayout() {
     dashboard: 'Bosh Sahifa & Analitika',
     station: 'Stansiya va Xarita Sozlamalari',
     users: 'Foydalanuvchilar Boshqaruvi',
+    broadcast: 'Ommaviy SMS va Yangiliklar Tarqatish',
     transactions: 'Tranzaksiyalar Tarixi'
   };
 
@@ -171,6 +173,7 @@ function MainLayout() {
               />
             )}
             {activeTab === 'users' && <UsersManagement />}
+            {activeTab === 'broadcast' && <BroadcastNotifications />}
             {activeTab === 'transactions' && <TransactionsHistory />}
           </main>
         </div>

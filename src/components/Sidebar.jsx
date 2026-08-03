@@ -1,16 +1,16 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Fuel, 
-  Users, 
-  History, 
-  ShieldCheck, 
-  ChevronRight,
-  ChevronLeft,
-  X,
-  Settings,
-  LogOut
-} from 'lucide-react';
+import {
+  FiGrid,
+  FiSliders,
+  FiUsers,
+  FiClock,
+  FiChevronRight,
+  FiChevronLeft,
+  FiX,
+  FiSettings,
+  FiLogOut
+} from 'react-icons/fi';
+import { IoMegaphoneOutline } from 'react-icons/io5';
 import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar({ 
@@ -28,25 +28,31 @@ export default function Sidebar({
     {
       id: 'dashboard',
       label: 'Bosh Sahifa',
-      icon: LayoutDashboard,
+      icon: FiGrid,
       desc: 'Analitika va Hisobotlar'
     },
     {
       id: 'station',
       label: 'Stansiya Sozlamalari',
-      icon: Fuel,
+      icon: FiSliders,
       desc: 'Xarita va Parametrlar'
     },
     {
       id: 'users',
       label: 'Foydalanuvchilar',
-      icon: Users,
+      icon: FiUsers,
       desc: 'Mijozlar Boshqaruvi'
+    },
+    {
+      id: 'broadcast',
+      label: 'Ommaviy SMS / Yangiliklar',
+      icon: IoMegaphoneOutline,
+      desc: 'Barcha Mijozlarga Xabar'
     },
     {
       id: 'transactions',
       label: 'Tranzaksiyalar',
-      icon: History,
+      icon: FiClock,
       desc: 'Tarix va Harakatlar'
     }
   ];
@@ -77,7 +83,7 @@ export default function Sidebar({
             title={isCollapsed && !mobileOpen ? "KeshBak - Menyuni kengaytirish" : undefined}
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0f7b4c] to-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-700/20 shrink-0 transition-transform hover:scale-105">
-              <Fuel className="w-5 h-5" />
+              <FiSliders className="w-5 h-5" />
             </div>
             {(!isCollapsed || mobileOpen) && (
               <div className="transition-opacity duration-200 whitespace-nowrap">
@@ -98,7 +104,7 @@ export default function Sidebar({
               className="hidden md:flex p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               title="Menyuni kichraytirish"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <FiChevronLeft className="w-5 h-5" />
             </button>
           )}
 
@@ -107,7 +113,7 @@ export default function Sidebar({
             onClick={() => setMobileOpen(false)}
             className="md:hidden p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <FiX className="w-5 h-5" />
           </button>
         </div>
 
@@ -175,7 +181,7 @@ export default function Sidebar({
                   )}
                 </div>
                 {isActive && (!isCollapsed || mobileOpen) && (
-                  <ChevronRight className="w-4 h-4 text-[#0f7b4c] shrink-0" />
+                  <FiChevronRight className="w-4 h-4 text-[#0f7b4c] shrink-0" />
                 )}
               </button>
             );
@@ -212,14 +218,14 @@ export default function Sidebar({
                   className="p-1.5 rounded-lg text-slate-500 hover:text-[#0f7b4c] hover:bg-slate-200/60 transition-colors"
                   title="Profil va Xavfsizlik Sozlamalari (Email & Parol)"
                 >
-                  <Settings className="w-4 h-4" />
+                  <FiSettings className="w-4 h-4" />
                 </button>
                 <button
                   onClick={logout}
                   className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                   title="Tizimdan chiqish"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <FiLogOut className="w-4 h-4" />
                 </button>
               </div>
             ) : (
@@ -228,7 +234,7 @@ export default function Sidebar({
                 className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                 title="Tizimdan chiqish"
               >
-                <LogOut className="w-4 h-4" />
+                <FiLogOut className="w-4 h-4" />
               </button>
             )}
           </div>
