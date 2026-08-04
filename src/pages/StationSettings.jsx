@@ -123,8 +123,7 @@ export default function StationSettings({ onStationUpdated }) {
         address: form.address,
         fuel_types: form.fuel_types,
         lat: parseFloat(form.lat),
-        lng: parseFloat(form.lng),
-        updated_at: new Date().toISOString()
+        lng: parseFloat(form.lng)
       };
 
       const { data, error } = await supabase
