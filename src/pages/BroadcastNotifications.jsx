@@ -118,16 +118,20 @@ export default function BroadcastNotifications() {
     for (let i = 0; i < totalTargets; i++) {
       const targetUser = targetUsersList[i];
       try {
-        await supabase
-          .from('transactions')
+        const { error: insertErr } = await supabase
+          .from('notifications')
           .insert([{
-            user_id: String(targetUser.id),
-            amount: 0,
-            cashback_amount: 0,
-            qr_data: fullBroadcastText,
+            user_id: targetUser.id,
+            title: title.trim(),
+            message: message.trim(),
+            category: category,
+            is_read: false,
             created_at: new Date().toISOString()
           }]);
         
+        if (insertErr) {
+          console.warn('Notifications insert warning:', insertErr);
+        }
         successCounter++;
       } catch (err) {
         console.warn(`User ${targetUser.id} ga yuborishda xato:`, err);

@@ -175,6 +175,10 @@ export default function TransactionsHistory() {
 
   // Filtrlangan tranzaksiyalar (Operatsiya turi, Qidiruv, va Sana bo'yicha)
   const filteredTransactions = transactions.filter((t) => {
+    // 0 so'mlik bildirishnoma SMS xabarlarini tranzaksiyalar tarixiga aralashtirmaslik
+    const hasValidAmount = Math.abs(Number(t.amount || 0)) > 0 || Math.abs(Number(t.cashback_amount || 0)) > 0;
+    if (!hasValidAmount) return false;
+
     const isEarn = isTransactionEarn(t);
     const typeMatch = 
       filterType === 'ALL' ||
