@@ -6,6 +6,7 @@ import StationSettings from './pages/StationSettings';
 import UsersManagement from './pages/UsersManagement';
 import TransactionsHistory from './pages/TransactionsHistory';
 import BroadcastNotifications from './pages/BroadcastNotifications';
+import TaskPrompts from './pages/TaskPrompts';
 import AutoLockOverlay from './components/AutoLockOverlay';
 import AccountSettingsModal from './components/AccountSettingsModal';
 import LoginPage from './pages/LoginPage';
@@ -105,7 +106,8 @@ function MainLayout() {
     station: 'Stansiya va Xarita Sozlamalari',
     users: 'Foydalanuvchilar Boshqaruvi',
     broadcast: 'Ommaviy SMS va Yangiliklar Tarqatish',
-    transactions: 'Tranzaksiyalar Tarixi'
+    transactions: 'Tranzaksiyalar Tarixi',
+    tasks: 'Vazifalar & App Prompt'
   };
 
   if (loading) {
@@ -175,6 +177,7 @@ function MainLayout() {
             {activeTab === 'users' && <UsersManagement />}
             {activeTab === 'broadcast' && <BroadcastNotifications />}
             {activeTab === 'transactions' && <TransactionsHistory />}
+            {activeTab === 'tasks' && <TaskPrompts />}
           </main>
         </div>
 

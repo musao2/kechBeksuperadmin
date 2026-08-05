@@ -54,6 +54,12 @@ export default function Sidebar({
       label: 'Tranzaksiyalar',
       icon: FiClock,
       desc: 'Tarix va Harakatlar'
+    },
+    {
+      id: 'tasks',
+      label: 'Vazifalar & App Prompt',
+      icon: FiGrid,
+      desc: 'SQL Skriptlar va Prompt'
     }
   ];
 

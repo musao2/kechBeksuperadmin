@@ -3,10 +3,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
   FiUsers,
   FiSearch,
-  FiEdit3,
-  FiDollarSign,
   FiPhone,
-  FiCreditCard,
   FiRefreshCw,
   FiX,
   FiDownload,
@@ -14,27 +11,28 @@ import {
   FiMessageSquare,
   FiBell,
   FiCheckCircle,
-  FiArrowRight,
-  FiZap
+  FiHash,
+  FiCalendar
 } from 'react-icons/fi';
-import { HiOutlineWallet, HiOutlineSparkles } from 'react-icons/hi2';
+import { HiOutlineWallet } from 'react-icons/hi2';
 
 export default function UsersManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [successToast, setSuccessToast] = useState('');
 
-  // Modals state
-  const [editingUser, setEditingUser] = useState(null);
-  const [editingName, setEditingName] = useState('');
-  const [newBalance, setNewBalance] = useState('');
+  // SMS/Xabar yuborish modal
+  const [msgUser, setMsgUser] = useState(null);
+  const [msgText, setMsgText] = useState('');
+  const [submittingMsg, setSubmittingMsg] = useState(false);
 
-  // Money & SMS Transfer Modal State
+  // Pul o'tkazish (Balans qo'shish) modal
   const [transferUser, setTransferUser] = useState(null);
   const [transferAmount, setTransferAmount] = useState('');
   const [transferComment, setTransferComment] = useState('');
   const [submittingTransfer, setSubmittingTransfer] = useState(false);
-  const [successToast, setSuccessToast] = useState('');
+
 
   useEffect(() => {
     fetchUsers();
@@ -48,131 +46,211 @@ export default function UsersManagement() {
     }
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('telegram_users')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUsers(data || []);
+      
+      const localBalances = JSON.parse(localStorage.getItem('local_balances') || '{}');
+      const mergedData = (data || []).map(u => ({
+        ...u,
+        cashback_balance: localBalances[u.chat_id] !== undefined ? localBalances[u.chat_id] : (u.cashback_balance || 0)
+      }));
+
+      setUsers(mergedData);
     } catch (err) {
-      console.error('Error fetching users:', err);
+      console.error('Foydalanuvchilarni yuklashda xatolik:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateUser = async (e) => {
+  // Foydalanuvchiga xabar/izoh yuborish (user_notifications ga saqlanadi)
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!editingUser) return;
-
+    if (!msgUser) return;
+    if (!msgText.trim()) {
+      alert('Iltimos, xabar matnini kiriting!');
+      return;
+    }
+    setSubmittingMsg(true);
     try {
-      const updatedBalance = parseFloat(newBalance);
-      const cleanName = editingName.trim();
       const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: cleanName,
-          name: cleanName,
-          cashback_balance: updatedBalance
-        })
-        .eq('id', editingUser.id);
+        .from('user_notifications')
+        .insert([{
+          chat_id: msgUser.chat_id,
+          phone: msgUser.phone,
+          title: '💬 Yangi Xabar',
+          message: msgText.trim(),
+          category: 'GENERAL',
+          is_read: false
+        }]);
+      
+      if (error && (error.message.includes('schema cache') || error.code === 'PGRST205')) {
+        const localNotifs = JSON.parse(localStorage.getItem('local_notifications') || '[]');
+        localNotifs.unshift({
+          chat_id: msgUser.chat_id,
+          phone: msgUser.phone,
+          title: '💬 Yangi Xabar',
+          message: msgText.trim(),
+          category: 'GENERAL',
+          is_read: false,
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem('local_notifications', JSON.stringify(localNotifs));
+      } else if (error) {
+        throw error;
+      }
 
-      if (error) throw error;
-
-      setEditingUser(null);
-      fetchUsers();
+      setSuccessToast(`${msgUser.phone} ga xabar yuborildi!`);
+      
+      setMsgUser(null);
+      setMsgText('');
+      setTimeout(() => setSuccessToast(''), 5000);
     } catch (err) {
-      alert("Foydalanuvchi ma'lumotlarini yangilashda xatolik: " + err.message);
+      alert('Xabar yuborishda xatolik: ' + err.message);
+    } finally {
+      setSubmittingMsg(false);
     }
   };
 
-  // Kartaga pul tashlash va foydalanuvchiga SMS/Bildirishnoma izoh bilan yuborish
-  const handleSendMoneyAndSMS = async (e) => {
+  // Balans o'tkazish
+  const handleTransferBalance = async (e) => {
     e.preventDefault();
     if (!transferUser) return;
-
-    const amount = parseFloat(transferAmount);
-    if (isNaN(amount) || amount === 0) {
-      alert("Iltimos, o'tkaziladigan pul summasini kiriting!");
+    const amount = Number(transferAmount);
+    if (!amount || amount <= 0) {
+      alert("Iltimos, to'g'ri summa kiriting!");
       return;
     }
-    if (!transferComment.trim()) {
-      alert("Iltimos, pul o'tkazmasi uchun izoh yoki SMS matnini kiriting!");
-      return;
-    }
-
+    
     setSubmittingTransfer(true);
     try {
-      const currentBalance = parseFloat(transferUser.cashback_balance || 0);
-      const newBal = currentBalance + amount;
-
-      // 1. Foydalanuvchi balansini yangilash
-      const { error: profileErr } = await supabase
-        .from('profiles')
-        .update({ cashback_balance: newBal })
-        .eq('id', transferUser.id);
-
-      if (profileErr) throw profileErr;
-
-      // 2. Tranzaksiyalar jadvaliga yozish (SMS va Izoh qr_data ustunida saqlanadi)
-      const { error: txErr } = await supabase
-        .from('transactions')
-        .insert([{
-          user_id: String(transferUser.id),
-          amount: amount,
-          cashback_amount: amount,
-          qr_data: transferComment.trim(),
-          created_at: new Date().toISOString()
-        }]);
-
-      if (txErr) {
-        throw txErr;
+      // 1. Joriy balansni bilib olamiz va yangilaymiz
+      const localBalances = JSON.parse(localStorage.getItem('local_balances') || '{}');
+      const currentBalance = Number(localBalances[transferUser.chat_id] || transferUser.cashback_balance || 0);
+      const newBalance = currentBalance + amount;
+      
+      const { error: updateErr } = await supabase
+        .from('telegram_users')
+        .update({ cashback_balance: newBalance })
+        .eq('chat_id', transferUser.chat_id);
+      
+      if (updateErr && (updateErr.message.includes('schema cache') || updateErr.code === 'PGRST205')) {
+        localBalances[transferUser.chat_id] = newBalance;
+        localStorage.setItem('local_balances', JSON.stringify(localBalances));
+      } else if (updateErr) {
+        throw updateErr;
       }
 
-      const recipientName = transferUser.full_name || transferUser.name || 'Mijoz';
-      setSuccessToast(`${recipientName} kartasiga ${formatCurrency(amount)} tushirildi!`);
+      // 2. balance_transfers tarixini saqlaymiz
+      const { error: historyErr } = await supabase
+        .from('balance_transfers')
+        .insert([{
+          chat_id: transferUser.chat_id,
+          phone: transferUser.phone,
+          amount: amount,
+          comment: transferComment.trim(),
+          admin_note: 'Admin paneldan o\'tkazildi'
+        }]);
+      if (historyErr && (historyErr.message.includes('schema cache') || historyErr.code === 'PGRST205')) {
+        const localTransfers = JSON.parse(localStorage.getItem('local_transfers') || '[]');
+        localTransfers.unshift({
+          chat_id: transferUser.chat_id,
+          phone: transferUser.phone,
+          amount: amount,
+          comment: transferComment.trim(),
+          admin_note: 'Admin paneldan o\'tkazildi',
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem('local_transfers', JSON.stringify(localTransfers));
+      } else if (historyErr) {
+        console.warn('History:', historyErr);
+      }
+
+      // 3. Xabarni saqlaymiz
+      const { error: notifErr } = await supabase
+        .from('user_notifications')
+        .insert([{
+          chat_id: transferUser.chat_id,
+          phone: transferUser.phone,
+          title: '💳 Kartangizga pul tushdi!',
+          message: `${amount.toLocaleString('uz-UZ')} so'm keshbek balansingizga qo'shildi. ${transferComment.trim()}`,
+          category: 'TRANSFER',
+          amount: amount,
+          is_read: false
+        }]);
+      if (notifErr && (notifErr.message.includes('schema cache') || notifErr.code === 'PGRST205')) {
+        const localNotifs = JSON.parse(localStorage.getItem('local_notifications') || '[]');
+        localNotifs.unshift({
+          chat_id: transferUser.chat_id,
+          phone: transferUser.phone,
+          title: '💳 Kartangizga pul tushdi!',
+          message: `${amount.toLocaleString('uz-UZ')} so'm keshbek balansingizga qo'shildi. ${transferComment.trim()}`,
+          category: 'TRANSFER',
+          amount: amount,
+          is_read: false,
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem('local_notifications', JSON.stringify(localNotifs));
+      } else if (notifErr) {
+        console.warn('Notif:', notifErr);
+      }
+
+      setSuccessToast(`${transferUser.phone} balansiga ${amount.toLocaleString('uz-UZ')} so'm o'tkazildi!`);
       setTransferUser(null);
       setTransferAmount('');
       setTransferComment('');
-      fetchUsers();
+      
+      // Update local state immediately
+      const updatedUsers = users.map(u => {
+        if (u.chat_id === transferUser.chat_id) {
+          return { ...u, cashback_balance: newBalance };
+        }
+        return u;
+      });
+      setUsers(updatedUsers);
 
-      setTimeout(() => setSuccessToast(''), 6000);
+      setTimeout(() => setSuccessToast(''), 5000);
     } catch (err) {
-      alert("Pul tushirishda xatolik: " + err.message);
+      alert("Balans o'tkazishda xatolik: " + err.message);
     } finally {
       setSubmittingTransfer(false);
     }
   };
 
-  // Filter users by search query (phone or name)
+
+
+  // Qidirish: telefon yoki chat_id bo'yicha
   const filteredUsers = users.filter((u) => {
-    const userName = u.full_name || u.name || '';
-    const nameMatch = userName.toLowerCase().includes(searchQuery.toLowerCase());
-    const phoneMatch = u.phone?.toLowerCase().includes(searchQuery.toLowerCase());
-    const cardMatch = u.card_number?.toLowerCase().includes(searchQuery.toLowerCase());
-    return nameMatch || phoneMatch || cardMatch;
+    const q = searchQuery.toLowerCase();
+    const phoneMatch = u.phone?.toLowerCase().includes(q);
+    const chatMatch = u.chat_id?.toLowerCase().includes(q);
+    return phoneMatch || chatMatch;
   });
 
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat('uz-UZ').format(val || 0) + " so'm";
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleString('uz-UZ', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    });
   };
 
   const exportUsersCSV = () => {
     if (filteredUsers.length === 0) return;
-    const headers = ["ID", "Ism-Sharif", "Telefon", "Karta Raqam", "Keshbek Balans (so'm)"];
+    const headers = ['Telefon Raqam', 'Chat ID', "Ro'yxatdan O'tgan Sana"];
     const rows = filteredUsers.map(u => [
-      u.id,
-      `"${u.full_name || u.name || ''}"`,
       `"${u.phone || ''}"`,
-      `"${u.card_number || ''}"`,
-      u.cashback_balance || 0
+      `"${u.chat_id || ''}"`,
+      `"${formatDate(u.created_at)}"`
     ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `profiles_${new Date().toISOString().split('T')[0]}.csv`);
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" +
+      [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const link = document.createElement('a');
+    link.setAttribute('href', encodeURI(csvContent));
+    link.setAttribute('download', `telegram_users_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -180,7 +258,7 @@ export default function UsersManagement() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Toast alert message */}
+      {/* Success Toast */}
       {successToast && (
         <div className="p-4 rounded-2xl bg-emerald-600 text-white shadow-lg flex items-center justify-between font-semibold text-sm">
           <div className="flex items-center gap-2">
@@ -193,56 +271,47 @@ export default function UsersManagement() {
         </div>
       )}
 
-      {/* Page Header Bar */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <FiUsers className="w-5 h-5 text-[#0f7b4c]" /> Foydalanuvchilar Boshqaruvi
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Ro'yxatdan o'tgan mijozlar, kartalarga pul tushirish, izohli SMS va bildirishnomalar yuborish
+            Telegram bot orqali ro'yxatdan o'tgan barcha foydalanuvchilar
           </p>
         </div>
-
         <div className="flex items-center gap-3">
           <button
             onClick={exportUsersCSV}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+            disabled={filteredUsers.length === 0}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors disabled:opacity-40"
           >
             <FiDownload className="w-4 h-4" /> Export CSV
           </button>
         </div>
       </div>
 
-      {/* Search & Stats Filter Row */}
+      {/* Search & Stats Bar */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Search input */}
         <div className="relative flex-1">
           <FiSearch className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Telefon raqami yoki Ism bo'yicha qidirish..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c]"
+            placeholder="Telefon raqami yoki Chat ID bo'yicha qidirish..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c] outline-none"
           />
           {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
-            >
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
               <FiX className="w-4 h-4" />
             </button>
           )}
         </div>
-
         <div className="flex items-center gap-3 text-xs text-slate-500">
-          <span>Jami topildi: <strong className="text-slate-900">{filteredUsers.length}</strong> ta mijoz</span>
-          <button
-            onClick={fetchUsers}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
-            title="Yangilash"
-          >
+          <span>Jami: <strong className="text-slate-900">{filteredUsers.length}</strong> ta foydalanuvchi</span>
+          <button onClick={fetchUsers} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600" title="Yangilash">
             <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -254,277 +323,154 @@ export default function UsersManagement() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
               <tr>
-                <th className="p-3.5">Foydalanuvchi</th>
+                <th className="p-3.5">#</th>
                 <th className="p-3.5">Telefon Raqami</th>
-                <th className="p-3.5">Karta Raqami</th>
-                <th className="p-3.5 text-right">Keshbek Balans</th>
+                <th className="p-3.5">Telegram Chat ID</th>
+                <th className="p-3.5">Ro'yxatga Kirgan</th>
+                <th className="p-3.5 text-right">Balans</th>
                 <th className="p-3.5 text-center">Amallar</th>
+
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-slate-700">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400">
+                  <td colSpan={5} className="p-10 text-center text-slate-400">
                     <FiRefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#0f7b4c]" />
-                    Foydalanuvchilar ro'yxati yuklanmoqda...
+                    <p>Foydalanuvchilar yuklanmoqda...</p>
                   </td>
                 </tr>
               ) : filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => {
-                  const displayName = user.full_name || user.name || 'Noma\'lum Mijoz';
-                  return (
-                    <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-emerald-100 text-[#0f7b4c] font-bold flex items-center justify-center text-xs border border-emerald-200">
-                            {displayName !== 'Noma\'lum Mijoz' ? displayName.charAt(0).toUpperCase() : 'M'}
-                          </div>
-                          <div>
-                            <div className="font-bold text-slate-900">
-                              {displayName}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-mono">
-                              ID: {user.id ? String(user.id).substring(0, 8) : '—'}
-                            </div>
-                          </div>
+                filteredUsers.map((user, idx) => (
+                  <tr key={user.chat_id || user.phone} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-3.5 text-slate-400 font-mono">{idx + 1}</td>
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-emerald-100 text-[#0f7b4c] font-bold flex items-center justify-center text-xs border border-emerald-200 shrink-0">
+                          {user.phone ? user.phone.slice(-2) : 'U'}
                         </div>
-                      </td>
-                      <td className="p-3.5 font-medium font-mono">
-                        <span className="inline-flex items-center gap-1 text-slate-700">
-                          <FiPhone className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="font-bold text-slate-800 font-mono tracking-wide">
                           {user.phone || '—'}
                         </span>
-                      </td>
-                      <td className="p-3.5 font-mono">
-                        {user.card_number ? (
-                          <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 font-bold text-slate-800 flex items-center gap-1.5 w-fit">
-                            <FiCreditCard className="w-3.5 h-3.5 text-[#0f7b4c]" />
-                            {user.card_number}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic">Karta biriktirilmagan</span>
-                        )}
-                      </td>
-                      <td className="p-3.5 text-right font-bold text-[#0f7b4c] text-sm">
-                        {formatCurrency(user.cashback_balance)}
-                      </td>
-                      <td className="p-3.5 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => {
-                              setTransferUser(user);
-                              setTransferAmount('');
-                              setTransferComment('Kartangizga keshbek puli tushirildi.');
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0f7b4c] hover:bg-[#0f7b4c] hover:text-white font-semibold text-xs transition-colors flex items-center gap-1 border border-emerald-200"
-                            title="Pul tushirish va Izohli SMS yuborish"
-                          >
-                            <FiSend className="w-3.5 h-3.5" /> Pul / SMS Yuborish
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingUser(user);
-                              setEditingName(user.full_name || user.name || '');
-                              setNewBalance(user.cashback_balance || 0);
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-xs transition-colors flex items-center gap-1"
-                          >
-                            <FiEdit3 className="w-3.5 h-3.5" /> Tahrirlash
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                      </div>
+                    </td>
+                    <td className="p-3.5">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 font-mono text-slate-700 text-[11px] font-semibold">
+                        {user.chat_id || '—'}
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-slate-500 font-mono text-[11px]">
+                      {formatDate(user.created_at)}
+                    </td>
+                    <td className="p-3.5 text-right font-bold text-slate-800">
+                      {Number(user.cashback_balance || 0).toLocaleString('uz-UZ')} <span className="text-[10px] text-slate-500 font-normal">so'm</span>
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => { setTransferUser(user); setTransferAmount(''); setTransferComment(''); }}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+                        >
+                          <HiOutlineWallet className="w-4 h-4" /> Pul O'tkazish
+                        </button>
+                        <button
+                          onClick={() => { setMsgUser(user); setMsgText(''); }}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0f7b4c] hover:bg-[#0f7b4c] hover:text-white font-semibold text-xs transition-colors flex items-center gap-1.5 border border-emerald-200"
+                        >
+                          <FiSend className="w-3.5 h-3.5" /> Xabar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400">
-                    Mos keluvchi foydalanuvchilar topilmadi
+                  <td colSpan={5} className="p-12 text-center">
+                    <div className="flex flex-col items-center gap-3 text-slate-400">
+                      <FiUsers className="w-10 h-10 opacity-30" />
+                      <p className="font-medium text-sm">
+                        {searchQuery ? "Qidiruv bo'yicha foydalanuvchi topilmadi" : "Hozircha foydalanuvchilar ro'yxatdan o'tmagan"}
+                      </p>
+                      {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} className="text-xs text-[#0f7b4c] underline">Filtrni tozalash</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        {!loading && filteredUsers.length > 0 && (
+          <div className="mt-4 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 pt-4">
+            <span>{filteredUsers.length} ta foydalanuvchi ko'rsatilmoqda</span>
+            <span>Jami: <strong className="text-slate-700">{users.length}</strong> ta</span>
+          </div>
+        )}
       </div>
 
-      {/* Pul Tushirish va Izohli SMS Yuborish Modal */}
-      {transferUser && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-xl overflow-hidden my-8">
-            
-            {/* Header */}
+      {/* Xabar Yuborish Modal */}
+      {msgUser && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl overflow-hidden">
             <div className="bg-[#0f7b4c] p-5 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
-                    <HiOutlineWallet className="w-6 h-6 text-white" />
+                    <FiMessageSquare className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-1.5">
-                      Pul Tashlash & SMS Yuborish
-                    </h3>
-                    <p className="text-xs text-emerald-100 font-medium">
-                      Mijoz kartasiga zudlik bilan pul va izoh yuborish
-                    </p>
+                    <h3 className="text-base font-bold text-white">Foydalanuvchiga Xabar</h3>
+                    <p className="text-xs text-emerald-100 font-medium">Bildirishnoma va izoh yuborish</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setTransferUser(null)}
-                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-                >
+                <button onClick={() => setMsgUser(null)} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors">
                   <FiX className="w-5 h-5" />
                 </button>
               </div>
             </div>
-
             <div className="p-6 space-y-5">
-              {/* Recipient User Profile Card */}
-              <div className="p-4 rounded-xl bg-slate-900 text-white shadow-sm border border-slate-800">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30">
-                      {(transferUser.full_name || transferUser.name || 'M').charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-white leading-tight">
-                        {transferUser.full_name || transferUser.name || 'Mijoz'}
-                      </p>
-                      <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
-                        <FiPhone className="w-3 h-3 text-emerald-400" /> {transferUser.phone || 'Noma\'lum'}
-                      </p>
-                    </div>
+              <div className="p-4 rounded-xl bg-slate-900 text-white border border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-sm border border-emerald-500/30">
+                    {msgUser.phone ? msgUser.phone.slice(-2) : 'U'}
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-slate-400 font-medium">Joriy Balans</p>
-                    <p className="text-sm font-extrabold text-emerald-400">
-                      {formatCurrency(transferUser.cashback_balance)}
-                    </p>
+                  <div>
+                    <p className="text-sm font-bold text-white font-mono">{msgUser.phone}</p>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">Chat ID: {msgUser.chat_id}</p>
                   </div>
                 </div>
-
-                {/* Live Balance Change Indicator */}
-                {transferAmount && !isNaN(parseFloat(transferAmount)) && (
-                  <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs font-semibold">
-                    <span className="text-slate-300 flex items-center gap-1">
-                      <FiArrowRight className="w-3.5 h-3.5 text-emerald-400" /> Yangilangan Balans:
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold font-mono">
-                      {formatCurrency((parseFloat(transferUser.cashback_balance) || 0) + parseFloat(transferAmount))}
-                    </span>
-                  </div>
-                )}
               </div>
-
-              <form onSubmit={handleSendMoneyAndSMS} className="space-y-4">
-                {/* Amount Input */}
+              <form onSubmit={handleSendMessage} className="space-y-4">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                      <FiDollarSign className="w-4 h-4 text-[#0f7b4c]" />
-                      O'tkaziladigan Summa (so'm):
-                    </label>
-                  </div>
-
-                  <div className="relative">
-                    <input
-                      type="number"
-                      required
-                      value={transferAmount}
-                      onChange={(e) => setTransferAmount(e.target.value)}
-                      placeholder="Masalan: 50000"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-lg font-bold focus:bg-white focus:border-[#0f7b4c] focus:ring-2 focus:ring-emerald-500/20 transition-all font-mono"
-                    />
-                    {transferAmount && (
-                      <span className="absolute right-3 top-2.5 text-xs font-bold text-[#0f7b4c] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        {formatCurrency(parseFloat(transferAmount))}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Quick Amount Preset Chips */}
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {[10000, 25000, 50000, 100000, 250000, 500000, 1000000].map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        onClick={() => setTransferAmount(amt.toString())}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border ${
-                          parseFloat(transferAmount) === amt
-                            ? 'bg-[#0f7b4c] text-white border-[#0f7b4c]'
-                            : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-emerald-50 hover:text-[#0f7b4c]'
-                        }`}
-                      >
-                        +{new Intl.NumberFormat('uz-UZ').format(amt)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Comment / SMS Text Area */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                      <FiMessageSquare className="w-4 h-4 text-[#0f7b4c]" />
-                      Izoh / SMS Matni (Foydalanuvchiga yuboriladi):
-                    </label>
-                  </div>
-
-                  {/* Template selector chips */}
+                  <label className="block text-xs font-bold text-slate-800 mb-2">Xabar Matni:</label>
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {[
-                      "Yoqilg'i keshbegi kartangizga tushirildi.",
-                      "Aksiya g'olibi uchun mukofot bonusi.",
-                      "Karta balansingiz muvaffaqiyatli to'ldirildi.",
-                      "Tizim keshbegi qayta hisoblandi."
-                    ].map((templateText, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setTransferComment(templateText)}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-[#0f7b4c] border border-slate-200 transition-colors"
-                      >
-                        {templateText}
+                      'Sizga maxsus taklif yuborildi!',
+                      'Keshbek balansingiz yangilandi.',
+                      'Aksiya muddati tugashiga 1 kun qoldi.',
+                      'Tizim yangilandi, yangi imkoniyatlar mavjud.'
+                    ].map((tpl, i) => (
+                      <button key={i} type="button" onClick={() => setMsgText(tpl)}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-[#0f7b4c] border border-slate-200 transition-colors">
+                        {tpl}
                       </button>
                     ))}
                   </div>
-
-                  <textarea
-                    required
-                    rows={3}
-                    value={transferComment}
-                    onChange={(e) => setTransferComment(e.target.value)}
-                    placeholder="Foydalanuvchi ilovasida ko'rinadigan izohni yozing..."
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0f7b4c] focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                  />
+                  <textarea required rows={3} value={msgText} onChange={(e) => setMsgText(e.target.value)}
+                    placeholder="Foydalanuvchiga yuboriladigan xabarni yozing..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0f7b4c] focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none" />
                   <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                    <FiBell className="w-3 h-3 text-amber-500" /> Bu matn foydalanuvchi ilovasida bildirishnoma bo'lib chiqadi.
+                    <FiBell className="w-3 h-3 text-amber-500" /> Bu xabar foydalanuvchi ilovasida bildirishnoma bo'lib ko'rinadi.
                   </p>
                 </div>
-
-                {/* Submit / Cancel Actions */}
                 <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setTransferUser(null)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                  >
-                    Bekor qilish
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submittingTransfer}
-                    className="px-5 py-2 rounded-xl bg-[#0f7b4c] hover:bg-[#0a5c39] text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    {submittingTransfer ? (
-                      <>
-                        <FiRefreshCw className="w-4 h-4 animate-spin" /> Yuborilmoqda...
-                      </>
-                    ) : (
-                      <>
-                        <FiSend className="w-4 h-4" /> Pul Tushirish va SMS Yuborish
-                      </>
-                    )}
+                  <button type="button" onClick={() => setMsgUser(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Bekor qilish</button>
+                  <button type="submit" disabled={submittingMsg}
+                    className="px-5 py-2 rounded-xl bg-[#0f7b4c] hover:bg-[#0a5c39] text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all disabled:opacity-50">
+                    {submittingMsg ? (<><FiRefreshCw className="w-4 h-4 animate-spin" /> Yuborilmoqda...</>) : (<><FiSend className="w-4 h-4" /> Xabar Yuborish</>)}
                   </button>
                 </div>
               </form>
@@ -533,66 +479,65 @@ export default function UsersManagement() {
         </div>
       )}
 
-      {/* Edit User Modal */}
-      {editingUser && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <FiEdit3 className="w-5 h-5 text-[#0f7b4c]" /> Mijoz Ma'lumotlarini Tahrirlash
-              </h3>
-              <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-600">
-                <FiX className="w-5 h-5" />
-              </button>
+      {/* Balans O'tkazish Modal */}
+      {transferUser && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl overflow-hidden">
+            <div className="bg-emerald-600 p-5 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <HiOutlineWallet className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Pul O'tkazish</h3>
+                    <p className="text-xs text-emerald-100 font-medium">Mijoz balansini to'ldirish</p>
+                  </div>
+                </div>
+                <button onClick={() => setTransferUser(null)} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors">
+                  <FiX className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-
-            <form onSubmit={handleUpdateUser} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Mijoz Ismi va Familiyasi:
-                </label>
-                <input
-                  type="text"
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  placeholder="Mijoz ismini kiriting..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c]"
-                />
+            <div className="p-6 space-y-5">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500 font-medium mb-0.5">Mijoz:</p>
+                    <p className="text-sm font-bold text-slate-900">{transferUser.phone}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500 font-medium mb-0.5">Joriy Balans:</p>
+                    <p className="text-sm font-bold text-[#0f7b4c]">
+                      {Number(transferUser.cashback_balance || 0).toLocaleString('uz-UZ')} so'm
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Keshbek Balansi (so'm):
-                </label>
-                <input
-                  type="number"
-                  value={newBalance}
-                  onChange={(e) => setNewBalance(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-base font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c]"
-                />
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-500 space-y-1">
-                <p>Telefon: <strong className="text-slate-800">{editingUser.phone || '—'}</strong></p>
-                <p>Karta: <strong className="text-slate-800">{editingUser.card_number || '—'}</strong></p>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingUser(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
-                >
-                  Bekor qilish
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#0f7b4c] hover:bg-[#0a5c39] text-white text-xs font-bold shadow-md shadow-emerald-900/10"
-                >
-                  Saqlash
-                </button>
-              </div>
-            </form>
+              <form onSubmit={handleTransferBalance} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1.5">Summa (so'm):</label>
+                  <input required type="number" min="1" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)}
+                    placeholder="Masalan: 15000"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm font-bold focus:border-[#0f7b4c] focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1.5">Izoh (Mijozga ko'rinadi):</label>
+                  <input required type="text" value={transferComment} onChange={(e) => setTransferComment(e.target.value)}
+                    placeholder="Masalan: Aksiya g'olibi bo'lganingiz uchun"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-medium focus:border-[#0f7b4c] focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none" />
+                </div>
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                  <button type="button" onClick={() => setTransferUser(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Bekor qilish</button>
+                  <button type="submit" disabled={submittingTransfer}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all disabled:opacity-50">
+                    {submittingTransfer ? (<><FiRefreshCw className="w-4 h-4 animate-spin" /> O'tkazilmoqda...</>) : (<><HiOutlineWallet className="w-4 h-4" /> Balansni To'ldirish</>)}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

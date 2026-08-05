@@ -41,23 +41,15 @@ export default function TransactionsHistory() {
       return;
     }
     try {
+      // transactions jadvalidan o'qiymiz, telegram_users bilan chat_id orqali bog'laymiz
       const { data, error } = await supabase
         .from('transactions')
-        .select('*, profiles:user_id(name, phone)')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(500);
 
-      if (error) {
-        console.warn('Error fetching joined transactions, using fallback:', error);
-        const { data: fallbackData } = await supabase
-          .from('transactions')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(500);
-        setTransactions(fallbackData || []);
-      } else {
-        setTransactions(data || []);
-      }
+      if (error) throw error;
+      setTransactions(data || []);
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
@@ -65,29 +57,15 @@ export default function TransactionsHistory() {
     }
   };
 
+
   const subscribeToTransactions = () => {
     if (!isSupabaseConfigured) return () => {};
     const channelTopic = `transactions_${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
       .channel(channelTopic)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, async (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, (payload) => {
         if (payload.new) {
-          let newTx = payload.new;
-          if (newTx.user_id && !newTx.profiles) {
-            try {
-              const { data: prof } = await supabase
-                .from('profiles')
-                .select('name, phone')
-                .eq('id', newTx.user_id)
-                .maybeSingle();
-              if (prof) {
-                newTx.profiles = prof;
-              }
-            } catch (e) {
-              console.error('Error fetching profile for real-time tx:', e);
-            }
-          }
-          setTransactions((prev) => [newTx, ...prev]);
+          setTransactions((prev) => [payload.new, ...prev]);
         }
       });
 
@@ -98,23 +76,25 @@ export default function TransactionsHistory() {
     };
   };
 
+
   const getUserName = (t) => {
-    if (t.profiles && (t.profiles.name || t.profiles.full_name)) {
-      return t.profiles.name || t.profiles.full_name;
-    }
+    // Telefon raqamidan foydalanuvchi nomini tuzamiz
     if (t.user_name) return t.user_name;
     if (t.full_name) return t.full_name;
     if (t.name) return t.name;
-    return 'Mijoz';
+    if (t.phone) return t.phone;
+    // Agar user_id bo'lsa uni qisqartirma ko'rsatamiz
+    if (t.user_id) return `ID: ${String(t.user_id).slice(0, 8)}...`;
+    return 'Telegram Mijoz';
   };
 
   const getUserPhone = (t) => {
-    if (t.profiles && t.profiles.phone) {
-      return t.profiles.phone;
-    }
     if (t.phone) return t.phone;
+    // user_id ni Telegram chat_id sifatida ko'rsatamiz
+    if (t.user_id) return `Chat: ${t.user_id}`;
     return '—';
   };
+
 
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('uz-UZ').format(val || 0) + " so'm";

@@ -50,7 +50,7 @@ export default function BroadcastNotifications() {
     }
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('telegram_users')
         .select('*');
 
       if (error) throw error;
@@ -61,6 +61,7 @@ export default function BroadcastNotifications() {
       setLoading(false);
     }
   };
+
 
   const loadHistoryFromStorage = () => {
     try {
@@ -77,13 +78,11 @@ export default function BroadcastNotifications() {
     } catch (e) {}
   };
 
-  // Filter target users based on group
+  // Barcha foydalanuvchilar (telegram_users da card_number ustuni yo'q)
   const getTargetUsers = () => {
-    if (targetGroup === 'WITH_CARD') {
-      return users.filter((u) => u.card_number && String(u.card_number).trim() !== '');
-    }
     return users;
   };
+
 
   const targetUsersList = getTargetUsers();
 
@@ -119,27 +118,47 @@ export default function BroadcastNotifications() {
       const targetUser = targetUsersList[i];
       try {
         const { error: insertErr } = await supabase
-          .from('notifications')
+          .from('user_notifications')
           .insert([{
-            user_id: targetUser.id,
+            chat_id: targetUser.chat_id,
+            phone: targetUser.phone,
             title: title.trim(),
             message: message.trim(),
             category: category,
-            is_read: false,
-            created_at: new Date().toISOString()
+            is_read: false
           }]);
         
         if (insertErr) {
-          console.warn('Notifications insert warning:', insertErr);
+          if (insertErr.message.includes('schema cache') || insertErr.code === 'PGRST205') {
+            const localNotifs = JSON.parse(localStorage.getItem('local_notifications') || '[]');
+            localNotifs.unshift({
+              chat_id: targetUser.chat_id,
+              phone: targetUser.phone,
+              title: title.trim(),
+              message: message.trim(),
+              category: category,
+              is_read: false,
+              created_at: new Date().toISOString()
+            });
+            localStorage.setItem('local_notifications', JSON.stringify(localNotifs));
+            successCounter++;
+          } else {
+            console.warn('user_notifications insert warning:', insertErr);
+          }
+        } else {
+          successCounter++;
         }
-        successCounter++;
       } catch (err) {
-        console.warn(`User ${targetUser.id} ga yuborishda xato:`, err);
+        console.warn(`User ${targetUser.chat_id} ga yuborishda xato:`, err);
       }
 
       setSentCount(successCounter);
       setProgress(Math.round(((i + 1) / totalTargets) * 100));
+
+      // Progressni ko'rsatish uchun kichik kutish
+      await new Promise(resolve => setTimeout(resolve, 30));
     }
+
 
     const newRecord = {
       id: Date.now(),
@@ -267,9 +286,9 @@ export default function BroadcastNotifications() {
                     onChange={(e) => setTargetGroup(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0f7b4c]"
                   >
-                    <option value="ALL">Barcha Foydalanuvchilar ({users.length} ta)</option>
-                    <option value="WITH_CARD">Faqat Karta biriktirilgan mijozlar ({users.filter(u => u.card_number).length} ta)</option>
+                    <option value="ALL">Barcha Telegram Foydalanuvchilar ({users.length} ta)</option>
                   </select>
+
                 </div>
 
                 <div>

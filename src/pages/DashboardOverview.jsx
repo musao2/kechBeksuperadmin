@@ -46,10 +46,11 @@ export default function DashboardOverview() {
     setLoading(true);
 
     try {
-      // 1. Fetch profiles count from Supabase
+      // 1. Foydalanuvchilar sonini telegram_users dan olish
       const { count: usersCount } = await supabase
-        .from('profiles')
+        .from('telegram_users')
         .select('*', { count: 'exact', head: true });
+
 
       // 2. Fetch daily_reports from Supabase
       const { data: reportsData } = await supabase
