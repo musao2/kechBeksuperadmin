@@ -77,34 +77,18 @@ export default function UsersManagement() {
     setSubmittingMsg(true);
     try {
       const { error } = await supabase
-        .from('user_notifications')
+        .from('xabarlar')
         .insert([{
           chat_id: msgUser.chat_id,
-          phone: msgUser.phone,
           title: '💬 Yangi Xabar',
           message: msgText.trim(),
           category: 'GENERAL',
           is_read: false
         }]);
       
-      if (error && (error.message.includes('schema cache') || error.code === 'PGRST205')) {
-        const localNotifs = JSON.parse(localStorage.getItem('local_notifications') || '[]');
-        localNotifs.unshift({
-          chat_id: msgUser.chat_id,
-          phone: msgUser.phone,
-          title: '💬 Yangi Xabar',
-          message: msgText.trim(),
-          category: 'GENERAL',
-          is_read: false,
-          created_at: new Date().toISOString()
-        });
-        localStorage.setItem('local_notifications', JSON.stringify(localNotifs));
-      } else if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setSuccessToast(`${msgUser.phone} ga xabar yuborildi!`);
-      
       setMsgUser(null);
       setMsgText('');
       setTimeout(() => setSuccessToast(''), 5000);
@@ -169,34 +153,18 @@ export default function UsersManagement() {
         console.warn('History:', historyErr);
       }
 
-      // 3. Xabarni saqlaymiz
+      // 3. Xabarni xabarlar jadvaliga saqlaymiz
       const { error: notifErr } = await supabase
-        .from('user_notifications')
+        .from('xabarlar')
         .insert([{
           chat_id: transferUser.chat_id,
-          phone: transferUser.phone,
           title: '💳 Kartangizga pul tushdi!',
           message: `${amount.toLocaleString('uz-UZ')} so'm keshbek balansingizga qo'shildi. ${transferComment.trim()}`,
           category: 'TRANSFER',
           amount: amount,
           is_read: false
         }]);
-      if (notifErr && (notifErr.message.includes('schema cache') || notifErr.code === 'PGRST205')) {
-        const localNotifs = JSON.parse(localStorage.getItem('local_notifications') || '[]');
-        localNotifs.unshift({
-          chat_id: transferUser.chat_id,
-          phone: transferUser.phone,
-          title: '💳 Kartangizga pul tushdi!',
-          message: `${amount.toLocaleString('uz-UZ')} so'm keshbek balansingizga qo'shildi. ${transferComment.trim()}`,
-          category: 'TRANSFER',
-          amount: amount,
-          is_read: false,
-          created_at: new Date().toISOString()
-        });
-        localStorage.setItem('local_notifications', JSON.stringify(localNotifs));
-      } else if (notifErr) {
-        console.warn('Notif:', notifErr);
-      }
+      if (notifErr) console.warn('Notif:', notifErr);
 
       setSuccessToast(`${transferUser.phone} balansiga ${amount.toLocaleString('uz-UZ')} so'm o'tkazildi!`);
       setTransferUser(null);
@@ -222,12 +190,14 @@ export default function UsersManagement() {
 
 
 
-  // Qidirish: telefon yoki chat_id bo'yicha
+  // Qidirish: telefon yoki chat_id, ism, karta bo'yicha
   const filteredUsers = users.filter((u) => {
     const q = searchQuery.toLowerCase();
     const phoneMatch = u.phone?.toLowerCase().includes(q);
     const chatMatch = u.chat_id?.toLowerCase().includes(q);
-    return phoneMatch || chatMatch;
+    const nameMatch = u.full_name?.toLowerCase().includes(q);
+    const cardMatch = u.card_number?.toLowerCase().includes(q);
+    return phoneMatch || chatMatch || nameMatch || cardMatch;
   });
 
   const formatDate = (dateStr) => {
@@ -240,10 +210,12 @@ export default function UsersManagement() {
 
   const exportUsersCSV = () => {
     if (filteredUsers.length === 0) return;
-    const headers = ['Telefon Raqam', 'Chat ID', "Ro'yxatdan O'tgan Sana"];
+    const headers = ['Ism / F.I.O', 'Telefon Raqam', 'Chat ID', 'Karta Raqami', "Ro'yxatdan O'tgan Sana"];
     const rows = filteredUsers.map(u => [
+      `"${u.full_name || ''}"`,
       `"${u.phone || ''}"`,
       `"${u.chat_id || ''}"`,
+      `"${u.card_number || ''}"`,
       `"${formatDate(u.created_at)}"`
     ]);
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" +
@@ -300,7 +272,7 @@ export default function UsersManagement() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Telefon raqami yoki Chat ID bo'yicha qidirish..."
+            placeholder="Ism, Telefon, Chat ID yoki Karta Raqami bo'yicha qidirish..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-[#0f7b4c] outline-none"
           />
           {searchQuery && (
@@ -324,7 +296,8 @@ export default function UsersManagement() {
             <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
               <tr>
                 <th className="p-3.5">#</th>
-                <th className="p-3.5">Telefon Raqami</th>
+                <th className="p-3.5">F.I.O</th>
+                <th className="p-3.5">Telefon / Karta</th>
                 <th className="p-3.5">Telegram Chat ID</th>
                 <th className="p-3.5">Ro'yxatga Kirgan</th>
                 <th className="p-3.5 text-right">Balans</th>
@@ -345,13 +318,20 @@ export default function UsersManagement() {
                   <tr key={user.chat_id || user.phone} className="hover:bg-slate-50 transition-colors">
                     <td className="p-3.5 text-slate-400 font-mono">{idx + 1}</td>
                     <td className="p-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-emerald-100 text-[#0f7b4c] font-bold flex items-center justify-center text-xs border border-emerald-200 shrink-0">
-                          {user.phone ? user.phone.slice(-2) : 'U'}
-                        </div>
-                        <span className="font-bold text-slate-800 font-mono tracking-wide">
+                      <span className="font-bold text-slate-800 tracking-wide block truncate max-w-[150px]">
+                        {user.full_name || '—'}
+                      </span>
+                    </td>
+                    <td className="p-3.5">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-emerald-700 font-mono tracking-wide text-[11px]">
                           {user.phone || '—'}
                         </span>
+                        {user.card_number && (
+                          <span className="px-2 py-0.5 rounded border border-emerald-200 bg-emerald-50 text-[#0f7b4c] font-mono text-[10px] inline-block w-max">
+                            {user.card_number}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="p-3.5">

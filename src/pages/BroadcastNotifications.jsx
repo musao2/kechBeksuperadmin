@@ -118,10 +118,9 @@ export default function BroadcastNotifications() {
       const targetUser = targetUsersList[i];
       try {
         const { error: insertErr } = await supabase
-          .from('user_notifications')
+          .from('xabarlar')
           .insert([{
             chat_id: targetUser.chat_id,
-            phone: targetUser.phone,
             title: title.trim(),
             message: message.trim(),
             category: category,
@@ -129,22 +128,7 @@ export default function BroadcastNotifications() {
           }]);
         
         if (insertErr) {
-          if (insertErr.message.includes('schema cache') || insertErr.code === 'PGRST205') {
-            const localNotifs = JSON.parse(localStorage.getItem('local_notifications') || '[]');
-            localNotifs.unshift({
-              chat_id: targetUser.chat_id,
-              phone: targetUser.phone,
-              title: title.trim(),
-              message: message.trim(),
-              category: category,
-              is_read: false,
-              created_at: new Date().toISOString()
-            });
-            localStorage.setItem('local_notifications', JSON.stringify(localNotifs));
-            successCounter++;
-          } else {
-            console.warn('user_notifications insert warning:', insertErr);
-          }
+          console.warn('xabarlar insert warning:', insertErr);
         } else {
           successCounter++;
         }
